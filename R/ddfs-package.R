@@ -1,0 +1,74 @@
+################################################################################
+################################################################################
+################################# ddfs-package #################################
+################################################################################
+################################################################################
+#' @title ddfs
+#' @name ddfs-package
+#' @description
+#' Density & Distribution Function variable-knot Spline (DDFS) estimation is a
+#' non-parametric method for estimating the pdf and the cdf of an unknown univariate
+#' or bivariate distribution based on a given data sample.
+#'
+#' @details
+#' The \pkg{ddfs} package provides a novel non-parametric method for simultaneous
+#' variable-knot spline estimation of both the probability density function (pdf)
+#' and the cumulative distribution function (cdf) of a random variable.
+#'
+#' The core innovation of \pkg{ddfs} is in its model structure, under which both the
+#' pdf and cdf share the same set of knots and their coefficients are linked.
+#' Specifically, the coefficients of the cdf are computed as weighted sums
+#' of the pdf coefficients, with weights determined by the knots location. This
+#' formulation has the major and convenient implication that for both pdf and
+#' cdf spline models only one set of knots and one set of coefficients need to be
+#' estimated.
+#'
+#' The estimation method is iterative and combines constrained maximum likelihood
+#' estimation of the coefficients with sequential minimum bias-driven knot estimation,
+#' inspired by the GeDS methodology (see Kaishev et al. (2016)). This sequential
+#' knot selection strategy ensures optimal placement without requiring a
+#' predefined number of knots, hence partially eluding the bandwidth selection
+#' problem, that is inherent to other kernel or spline-based methods.
+#'
+#' The equivalent representation of the DDFS pdf estimator as a mixture of linear
+#' combinations of Dirichlet random variables, enables the derivation of some
+#' large-sample properties, including strong consistency and asymptotic
+#' normality, leveraging established results from maximum likelihood estimation
+#' for mixture densities.
+#'
+#' The \pkg{ddfs} package supports both univariate and bivariate density
+#' estimation. The method constructs B-spline expansions of order \eqn{n}
+#' for the pdf and \eqn{n+1} for the cdf. The main function of this package is
+#' \code{\link{ddfs}} which produces \code{\link{ddfs}} objects.
+#'
+#'
+#' Please report any issue arising or bug in the code to
+#' \email{emilio.saenz-guillen@bayes.city.ac.uk}.
+#'
+#' \tabular{rl}{
+#' Package: \tab ddfs\cr
+#' Version: \tab 0.2.6 \cr
+#' Date: \tab 2025-02-10\cr
+#' License: \tab GPL-3 \cr
+#' }
+#'
+#' @references
+#' Kaishev, V.K., Dimitrova, D.S., Haberman, S., & Verrall, R.J. (2016).
+#' Geometrically designed, variable knot regression splines.
+#' \emph{Computational Statistics}, \strong{31}, 1079--1105. \cr
+#' DOI: \doi{10.1007/s00180-015-0621-7}
+#'
+#' Dimitrova, D. S., Kaishev, V. K. and Saenz Guillen, E. (2025).
+#' Distribution and density function estimation using variable-knot splines.
+#' \emph{Manuscript submitted for publication.}
+#'
+#' @keywords package
+#' @aliases ddfs-package
+#'
+#' @author  Dimitrina S. Dimitrova <D.Dimitrova@city.ac.uk>,
+#' Vladimir K. Kaishev <V.Kaishev@city.ac.uk> and
+#' Emilio L. Sáenz Guillén <Emilio.Saenz-Guillen@bayes.city.ac.uk>
+#'
+#'
+"_PACKAGE"
+NULL

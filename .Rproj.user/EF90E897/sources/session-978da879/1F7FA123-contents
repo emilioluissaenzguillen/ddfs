@@ -1,0 +1,258 @@
+################################################################################
+#################################### COPULA ####################################
+################################################################################
+
+################################################################################
+################### Method of inference function for margins ###################
+################################################################################
+dataXZ <- as.matrix(cbind(data$X, data$Z))
+kendall_tau <- cor(dataXZ, method = "kendall")[[2]]
+rho_gaussian <- sin(pi*kendall_tau/2)
+
+X_new <- data[,1]
+Z_new <- data[,2]
+
+F_X_new <- predict.ddfs(ddfs_X, newdata = X_new, type = "distribution")
+# # Replace values in F_X_new that are close to 0 or 1
+# F_X_new <- ifelse(abs(F_X_new - 0) < 1e-3, 0,
+#                   ifelse(abs(F_X_new - 1) < 1e-3, 1, F_X_new))
+F_Z_new <- predict.ddfs(ddfs_Z, newdata = Z_new, type = "distribution")
+# # Replace values in F_X_new that are close to 0 or 1
+# F_Z_new <- ifelse(abs(F_Z_new - 0) < 1e-3, 0,
+#                   ifelse(abs(F_Z_new - 1) < 1e-3, 1, F_Z_new))
+
+# Prepare marginal cdfs
+F1 = F_X_new
+F2 = F_Z_new
+F12 = cbind(F1, F2)
+
+# Fit meta distribution based on IFM
+IFMfitn <- fitCopula(normalCopula(), F12, method="ml",
+                     start = c(rho_gaussian))
+# Pad each vector to the maximum length and combine them
+IFM_fits <- cbind(coef(IFMfitn), logLik(IFMfitn)[[1]])
+
+# Name the rows and columns
+row.names(IFM_fits) <- c("Gaussian")
+colnames(IFM_fits) <- c("rho", "loglikelihood")
+
+print(IFM_fits)
+
+# Kendall's tau
+kendall_tau <- asin(IFMfitn@estimate)*2/pi
+
+# Save the list object as an RDS file
+saveRDS(IFMfitn, file = paste0("lorenz_curves&copula\\rds\\X", suffix,"\\IFMfitn_X", suffix, "_Z.rds"))
+
+# don´t run for suffix = poorer or richer
+################################################################################
+################################### pCopula ####################################
+################################################################################
+copula::persp(IFMfitn@copula, pCopula,
+              main = bquote(c[hat(rho)]^Ga * "(" * u[1] * "," ~ u[2] * ")" ~ ", " ~ hat(rho) == .(IFMfitn@estimate)))
+# Define a grid of u1 and u2 values for the copula plot
+u1 <- seq(0, 1, length.out = 26)
+u2 <- seq(0, 1, length.out = 26)
+grid <- expand.grid(u1 = u1, u2 = u2)
+# Calculate the copula density for each grid point
+z_values <- matrix(apply(grid, 1, function(x) pCopula(c(x[1], x[2]), IFMfitn@copula)),
+                   nrow = length(u1),
+                   ncol = length(u2))
+
+# Persp
+pdf(paste0(output,"\\persp_copula_", round(IFMfitn@estimate,4),".pdf"), width=9.33, height=9.33)
+persp3D(x = u1, y = u2, z = z_values, col = col_prime, theta = -30, phi = 20, expand = 0.618,
+        # main = bquote(hat(C)[hat(rho)]^Ga * "(" * u[1] * "," ~ u[2] * ")" ~ ", " ~ hat(rho) == .(IFMfitn@estimate)),
+        xlab = "", ylab = "", zlab = "", ticktype = "detail", colkey = FALSE, border = "black",
+        cex.main = 2, cex.axis = 1.25, cex.lab = 1.25
+)
+text3D(0.5, -0.175, 0, expression(u[1]), add = TRUE, cex = 1.5)
+text3D(-0.175, 0.5, 0, expression(u[2]), add = TRUE, cex = 1.5)
+dev.off()
+# Contour
+pdf(paste0(output,"\\contour_copula_", round(IFMfitn@estimate,4),".pdf"), width=6, height=6)
+contourplot2(IFMfitn@copula, FUN = pCopula,
+             col = "black",
+             lwd = 1,
+             # main = bquote(C[hat(rho)]^Ga * "(" * u[1] * "," ~ u[2] * ")" ~ ", " ~ hat(rho) == .(IFMfitn@estimate)),
+             xlab = expression(u[1]),
+             ylab = expression(u[2]),
+             col.regions = col,
+             par.settings = list(fontsize = list(text = 14, points = 10)))
+dev.off()
+
+################################################################################
+################################### dCopula ####################################
+################################################################################
+copula::persp(IFMfitn@copula, dCopula,
+              main = bquote(c[hat(rho)]^Ga * "(" * u[1] * "," ~ u[2] * ")" ~ ", " ~ hat(rho) == .(IFMfitn@estimate)))
+# Define a grid of u1 and u2 values for the copula plot
+u1 <- seq(0, 1, length.out = 26)
+u2 <- seq(0, 1, length.out = 26)
+grid <- expand.grid(u1 = u1, u2 = u2)
+# Calculate the copula density for each grid point
+z_values <- matrix(apply(grid, 1, function(x) dCopula(c(x[1], x[2]), IFMfitn@copula)),
+                   nrow = length(u1),
+                   ncol = length(u2))
+
+# Persp
+pdf(paste0(output,"\\persp_copula_density_", round(IFMfitn@estimate,4),".pdf"), width=9.33, height=9.33)
+persp3D(x = u1, y = u2, z = z_values, col = col, theta = 30, phi = 30, expand = 0.618,
+        # main = bquote(c[hat(rho)]^Ga * "(" * u[1] * "," ~ u[2] * ")" ~ ", " ~ hat(rho) == .(IFMfitn@estimate)),
+        xlab = "", ylab = "", zlab = "Density", ticktype = "detail", colkey = FALSE, border = "black",
+        cex.main = 2, cex.axis = 1.25, cex.lab = 1.25
+)
+text3D(0.5, -0.175, 0, expression(u[1]), add = TRUE, cex = 1.5)
+text3D(-0.175, 0.5, 0, expression(u[2]), add = TRUE, cex = 1.5)
+dev.off()
+# Contour
+pdf(paste0(output,"\\contour_copula_density_", round(IFMfitn@estimate,4),".pdf"), width=6, height=6)
+contourplot2(IFMfitn@copula, FUN = dCopula,
+             col = "black",
+             lwd = 1,
+             # main = bquote(c[hat(rho)]^Ga * "(" * u[1] * "," ~ u[2] * ")" ~ ", " ~ hat(rho) == .(IFMfitn@estimate)),
+             xlab = expression(u[1]),
+             ylab = expression(u[2]),
+             col.regions = col,
+             par.settings = list(fontsize = list(text = 14, points = 10)))
+dev.off()
+
+# Simulate Gaussian Copula
+library(MASS)
+n <- NROW(data)
+rho <- IFMfitn@estimate
+# Define the correlation matrix
+Sigma <- matrix(c(1, rho, rho, 1), 2, 2)
+# Generate bivariate normal samples
+biv_norm <- mvrnorm(n, mu = c(0, 0), Sigma = Sigma)
+# Transform marginals to Uniform(0,1)
+u1 <- pnorm(biv_norm[, 1])  # Transform first marginal to uniform
+u2 <- pnorm(biv_norm[, 2])  # Transform second marginal to uniform
+
+## Plot ##
+pdf(paste0(output,"\\gausscopula_scatterplot_", round(IFMfitn@estimate,4),".pdf"), width=6, height=6)
+par(mar = c(5, 5, 4, 2) + 0.1)
+plot(u1, u2, col = "black", pch = 16,
+     main = bquote(c[hat(rho)]^Ga * "(" * u[1] * "," ~ u[2] * ")" ~ ", " ~ hat(rho) == .(IFMfitn@estimate)),
+     xlab = bquote(u[1]), ylab = bquote(u[2]),
+     cex.main = 1.5, cex.axis = 1.25, cex.lab = 1.25)
+par(mar = c(5, 4, 4, 2) + 0.1)
+dev.off()
+
+################################################################################
+################ Scatter plot Gaussian Copula simulated values #################
+################################################################################
+# Now plot r[,1] and r[,2] correspondingly into the inverse of the marginals
+# Transform into piecewise polynomial and invert it
+set.seed(123)
+r <- rCopula(nrow(data), IFMfitn@copula)  # sample from the normal copula
+dens <- pCopula(r, IFMfitn@copula)
+
+X_new <- inv_PPolyGeDS(ppoly_cubicX, r[,1])
+Z_new <- inv_PPolyGeDS(ppoly_cubicZ, r[,2])
+
+data_new <- data.frame(X = as.numeric(X_new), Z = as.numeric(Z_new))
+
+## Plot ##
+pdf(paste0(output,"\\meta_copula_scatterplot_", round(IFMfitn@estimate,4),".pdf"), width=6, height=6)
+par(mar = c(5, 5, 4, 2) + 0.1)
+plot(data_new, col = "red", pch = 16,
+     # main = bquote(hat(F)(x, z) == hat(C)[hat(rho)]^Ga * "(" * hat(F)[X] * "(" * x * ")" * "," ~ hat(F)[Z] * "(" * z * ")" * ")" ~ ", " ~ hat(rho) == .(IFMfitn@estimate)),
+     xlab = xlabel, ylab = "Standard of Living (Z)",
+     cex.main = 1.5, cex.axis = 1.25, cex.lab = 1.25)
+par(mar = c(5, 4, 4, 2) + 0.1)
+dev.off()
+
+################################################################################
+########################### Empirical Copula X and Z ###########################
+################################################################################
+rank1 <- rank(data$X)
+rank2 <- rank(data$Z)
+copula_u1u2 <- list()
+u1 <- unlist(list())
+u2 <- unlist(list())
+for (i in 1:10000){
+  u1[i] <- runif(1)
+  u2[i] <- runif(1)
+  indicator <- list()
+  for (j in 1:length(data$X)){
+    indicator[j] <- as.numeric(rank1[j]/(length(data$X)+1) <= u1[i] &
+                                 rank2[j]/(length(data$Z)+1) <= u2[i])
+  }
+  copula_u1u2[i] <- (1/length(data$X)) * sum(unlist(indicator))
+}
+
+copula_n_u1u2 <- unlist(copula_u1u2)
+
+copula <- data.frame(u1, u2, copula_n_u1u2)
+
+pdf(paste0(output,"\\empirical_copula.pdf"), width=9.33, height=9.33)
+scatter3D(copula[,1], copula[,2], copula[,3], pch = 20, col = col_prime,
+          xlab = "", ylab = "", zlab = "",
+          # main = expression(hat(C)(u[1],u[2])),
+          cex.axis = 1.25, cex.lab = 1.25, cex.main = 1.5, ticktype = "detailed",
+          theta = -30, phi = 20, expand = 0.618, colkey = FALSE, border = "gray")
+text3D(0.5, -0.175, 0, expression(u[1]), add = TRUE, cex = 1.25)
+text3D(1.175, 0.5, 0, expression(u[2]), add = TRUE, cex = 1.25)
+dev.off()
+
+# fig <- plot_ly(copula, x = ~u1, y = ~u2, z = ~copula_n_u1u2)
+#
+# # Add markers with red color scaling by density
+# fig <- fig %>%
+#   add_markers(marker = list(color = ~copula_n_u1u2, colorscale = 'Reds', showscale = TRUE))
+#
+# # Layout for the axes
+# fig <- fig %>%
+#   layout(scene = list(xaxis = list(title = "u1"),
+#                       yaxis = list(title = "u2"),
+#                       zaxis = list(title = "c_n(u1,u2)")))
+#
+# fig
+
+
+################################################################################
+######  Copula Multivariate Extension of the Inverse Lorenz curve (MEILC) ######
+################################################################################
+
+mult_lorenz <- megcmeilc$mult_lorenz(data_new)
+
+C <- mult_lorenz[[1]]
+Y <- mult_lorenz[[2]]
+Z <- mult_lorenz[[3]]
+megc <- mult_lorenz[[4]]
+gini_x <- mult_lorenz[[5]]
+gini_y <- mult_lorenz[[6]]
+
+png(paste0(output,"\\mult_lorenz_copula_", round(megc, 4),".png"), width=1800, height=1800)
+par(mar = c(5, 5, 4, 2) + 0.1)
+persp3D(x = C[1, ], y = Y[, 1], z = Z,
+        col = col, theta = -30, phi = 20, expand = 0.618,
+        xlab = "Z", paste("\nZ\n Gini =", round(gini_y, 4)),
+        ylab = "", # paste("\nX\n Gini =", round(gini_x, 4)),
+        zlab = "\nProportion",
+        # main = bquote("MEGC" == .(round(megc, 4)) ~ "," ~ rho == .(IFMfitn@estimate)),
+        ticktype = "detail", colkey = FALSE, border = "black",
+        cex.main = 4, cex.axis = 3, cex.lab = 3)
+
+# Add axis label X/X_prime
+if (suffix_prime == "_tilde") {
+  label <- parse(text = deparse(bquote(atop(tilde(X)
+                                            # "Gini =" ~ .(round(gini_x, 4))
+  ))
+  ))
+} else {
+  label <- parse(text = deparse(bquote(atop(X
+                                            # "Gini =" ~ .(round(gini_x, 4))
+  ))
+  ))
+}
+text3D(x = -0.15, y = 0.3, z = 0,
+       labels = label,
+       add = TRUE, cex = 3, srt = -65)
+
+par(mar = c(5, 4, 4, 2) + 0.1)
+dev.off()
+
+
+

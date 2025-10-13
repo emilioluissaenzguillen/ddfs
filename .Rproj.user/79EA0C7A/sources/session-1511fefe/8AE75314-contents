@@ -1,0 +1,209 @@
+# First, clear all
+rm(list = ls())
+graphics.off()
+# Set directory
+setwd("C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/PDF and CDF Estimation/R package/ddfs")
+library(devtools)
+document()
+load_all()
+library(ddfs)
+
+library(writexl)
+
+# Set directory
+setwd("C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/PDF and CDF Estimation/examples/simulation_univariate")
+source("utils.R")
+
+setwd("C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/PDF and CDF Estimation/examples/simulation_univariate/Zhenyu Cui et al. (2020)")
+
+################################################################################
+# Cui Z, Kirkby JL, Nguyen D.
+# NONPARAMETRIC DENSITY ESTIMATION BY B-SPLINE DUALITY.
+# Econometric Theory. 2020;36(2):250-291. doi:10.1017/S0266466619000112
+# TABLE 2. Test case densities for numerical experiments
+################################################################################
+Ns <- c(10^2, 10^3)
+output_labels <- c("output/N=100/tuning", "output/N=1000/tuning")
+examples <- c("Gaussian", "Student-t", "Exponential", "Chi-square", "Gamma", "Weibull",
+              "Log-normal", "Nakagami", "Kurtotic unimodal", "Outlier", "Skewed unimodal",
+              "Strongly skewed", "Merton's jump diffusion", "Kou's double exponential",
+              "GEV Type I", "GEV Type II", "GEV Type III",
+              "MixGauss", "Mix1d", "MixGauss2", "MixGauss3",
+              "Bimodal", "Separated bimodal", "Skewed bimodal",
+              "Trimodal", "Smooth comb", "Claw")
+
+examples <- c("GEV Type I", "Separated bimodal", "Skewed bimodal")
+top5 <- TRUE
+
+for (ex in examples) {
+  for (i in seq_along(Ns)) {
+    N <- Ns[i]
+    output <- output_labels[i]
+
+    run_models <- function(i, n, min.intknots, q_F, phi_F, beta) {
+      sim <- sim.dist(N, ex)
+      X <- sim$X
+      f_X <- sim$f_X
+
+      X_new <- seq(from = min(X), to = max(X), length.out = 1000)
+      f_X_new <- sim$f_X_func(X_new)
+
+      result <- list(
+        MSE_DDFS_pdf = NULL,
+        MISE_DDFS_pdf = NULL
+      )
+
+      # (I) ddfs
+      ddfs_fit <- tryCatch(
+        ddfs(X, n = n, min.intknots = min.intknots,
+             phi_F = phi_F, q_F = q_F, beta = beta),
+        error = function(e) {
+          message(paste0("Error occurred in DDFS for iteration = ", i, ": ", e))
+          return(NULL)
+        }
+      )
+      if(!is.null(ddfs_fit)){
+        # PDF
+        f_hat_DDFS <- ddfs_fit$f_X_hat$pred
+        result$MSE_DDFS_pdf <- mean((f_X - f_hat_DDFS)^2)
+        f_pred_DDFS <- as.numeric(predict.ddfs(ddfs_fit, newdata = X_new, type = "density"))
+        result$MISE_DDFS_pdf <- mean((f_X_new - f_pred_DDFS)^2)
+      }
+
+      return(result)
+    }
+
+    n_vals = 4
+
+    if (ex == "Gaussian" || ex == "Student-t") {
+      min.intknots_vals <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18)
+      phi_F_vals        <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995)
+      q_F_vals          <- c(1, 2)
+      beta_vals         <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    } else if (ex == "Exponential" || ex == "Chi-square" || ex == "Gamma" ||
+               ex == "Weibull" || ex == "Log-normal" || ex == "Nakagami" || ex == "Skewed unimodal") {
+      min.intknots_vals <- c(1, 2, 3, 4, 5, 6, 7, 8)
+      phi_F_vals        <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)
+      q_F_vals          <- c(1, 2)
+      beta_vals         <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    } else if (ex == "Kurtotic unimodal" || ex == "Outlier" || ex == "Strongly skewed" ||
+               ex ==  "Merton's jump diffusion" || ex == "Kou's double exponential") {
+      min.intknots_vals <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+      phi_F_vals        <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)
+      q_F_vals          <- c(1, 2)
+      beta_vals         <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    } else if (ex == "GEV Type I" || ex == "GEV Type II" || ex == "GEV Type III") {
+      min.intknots_vals <- c(0, 1, 2, 3, 4, 5, 6, 7, 8)
+      phi_F_vals        <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95)
+      q_F_vals          <- c(1, 2)
+      beta_vals         <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    } else if (ex == "MixGauss" ||ex == "Mix1d" || ex == "MixGauss2" || ex == "MixGauss3") {
+      min.intknots_vals <- c(4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18)
+      phi_F_vals        <- c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995)
+      q_F_vals          <- c(1, 2)
+      beta_vals         <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    } else if (ex == "Bimodal") {
+      min.intknots_vals <- c(8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24)
+      phi_F_vals        <- c(0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995)
+      q_F_vals          <- c(1, 2)
+      beta_vals         <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    } else if (ex == "Separated bimodal" || ex == "Skewed bimodal") {
+      min.intknots_vals <- c(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+      phi_F_vals        <- c(0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995)
+      q_F_vals          <- c(1, 2)
+      beta_vals         <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    } else if (ex == "Trimodal" || ex == "Smooth comb" || ex == "Claw") {
+      min.intknots_vals <- c(8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32)
+      phi_F_vals        <- c(0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995)
+      q_F_vals          <- c(1, 2)
+      beta_vals         <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+    }
+
+    # Generate all combinations of parameters
+    param_combinations <- expand.grid(n = n_vals, min.intknots = min.intknots_vals,
+                                      phi_F = phi_F_vals, q_F = q_F_vals, beta = beta_vals)
+
+    runs <- 100
+
+    if (top5) {
+      tuned <- read_excel(paste0("output/N=", N,"/tuning/tuned_", ex,".xlsx"))
+      tuned <- tuned[order(tuned$Q3_MISE), ]
+
+      tuned_min_MISEQ3 <- head(tuned, ceiling(0.05 * nrow(tuned)))
+
+      min.intknots_vals <- unique(tuned_min_MISEQ3$min.intknots)
+      phi_F_vals        <- unique(tuned_min_MISEQ3$phi_F)
+      q_F_vals          <- unique(tuned_min_MISEQ3$q_F)
+      beta_vals         <- unique(tuned_min_MISEQ3$beta)
+
+      param_combinations <- as.data.frame(tuned_min_MISEQ3[,c("n", "min.intknots", "q_F", "phi_F", "beta")])
+
+      # Set the number of runs and seed
+      runs <- 1000
+    }
+
+    # Loop over each parameter combination
+    process_combination <- function(i) {
+      # Set seed for reproducibility
+      set.seed(123)
+
+      params <- param_combinations[i, ]
+
+      # Run the models for the current parameter combination
+      results_list <- lapply(1:runs, function(run) {
+        run_models(run, n = params$n, min.intknots = params$min.intknots, q_F = params$q_F,
+                   phi_F = params$phi_F, beta = params$beta)
+      })
+      # Compute median MSEs for the current parameter set
+      quantiles_MSE <- quantile(
+        sapply(results_list, function(res) if (!is.null(res$MSE_DDFS_pdf)) res$MSE_DDFS_pdf else NA),
+        probs = c(0.25, 0.5, 0.75),
+        na.rm = TRUE
+      )
+      quantiles_MISE <- quantile(
+        sapply(results_list, function(res) if (!is.null(res$MISE_DDFS_pdf)) res$MISE_DDFS_pdf else NA),
+        probs = c(0.25, 0.5, 0.75),
+        na.rm = TRUE
+      )
+
+      print(paste0("Iteration ", i, " of N = ", N))
+
+      # Append results to the final data frame
+      return(data.frame(
+        n = params$n,
+        min.intknots = params$min.intknots,
+        q_F = params$q_F,
+        phi_F = params$phi_F,
+        beta = params$beta,
+        Q1_MSE = quantiles_MSE[1],
+        Q2_MSE = quantiles_MSE[2],
+        Q3_MSE = quantiles_MSE[3],
+        Q1_MISE = quantiles_MISE[1],
+        Q2_MISE = quantiles_MISE[2],
+        Q3_MISE = quantiles_MISE[3]
+      ))
+
+    }
+
+    # Run in parallel
+    # n_cores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+    # final_results_list <- mclapply(seq_len(nrow(param_combinations)), process_combination, mc.cores = n_cores)
+    # final_results <- do.call(rbind, final_results_list)
+
+    final_results_list <- lapply(seq_len(nrow(param_combinations)), process_combination)
+    final_results <- do.call(rbind, final_results_list)
+
+
+    if (top5) {
+      write_xlsx(final_results, paste0(output, "/tuned_", ex,"_1Kruns.xlsx"))
+    } else {
+      write_xlsx(final_results, paste0(output, "/tuned_", ex,".xlsx"))
+    }
+
+    print(paste0("Done with ", ex))
+
+  }
+}
+
+
+

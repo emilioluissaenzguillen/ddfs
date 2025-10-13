@@ -1,0 +1,434 @@
+# First, clear all
+rm(list = ls())
+graphics.off()
+# Load packages
+setwd("C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/PDF and CDF Estimation/R package/ddfs")
+library(devtools)
+document()
+load_all()
+# Lorenz project related functions
+source("C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/Perceived Income Inequality/Code/functions/functions.R")
+# Other packages
+pacman::p_load(readxl, dplyr, ggplot2, tidyr, matrixStats, writexl, copula,
+               scatterplot3d, FactoClass, plotly, rgl, fMultivar, plot3D, robusTest,
+               ggplot2, ggpubr, reticulate)
+# Set directory
+setwd("C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/Perceived Income Inequality/Code/2024-07-19_study")
+
+# Colours palette for plots
+col <- colorRampPalette(c("blue", "white", "yellow", "orange", "red"))(100)
+col_prime <- colorRampPalette(c("blue", "gray", "yellow", "orange", "red"))(100)
+
+# Output directory
+output <- paste0(getwd()[1], "/output/figures/copula_&_mult_lorenz/X-Z")
+
+######################################
+## 1) Import Survey Part II results ##
+######################################
+column_names <- c("id", "income", "Z", "other_ranges_Z", "start_time", "end_time", "extraQ1", "extraQ2",
+                  "£0-15k", "£15k-30k", "£30k-45k", "£45k-60k", "£60k-75k", "£75k-90k",
+                  "£90k-105k", "£105k-120k", "£120k or Above")
+
+data_surveypart2 <- read_excel("input/part_II/perceived_income_inequality_distribution.xlsx",
+                         sheet = "main",
+                         range = "A1:Q1190",
+                         col_names = column_names)
+
+# Check for cumsum = 100 and duplicated IDs
+income_brackets <- c("£0-15k", "£15k-30k", "£30k-45k", "£45k-60k",
+                     "£60k-75k", "£75k-90k", "£90k-105k", "£105k-120k", "£120k or Above")
+data_surveypart2 <- data_surveypart2[rowSums(data_surveypart2[income_brackets]) == 100, ]
+data_surveypart2 <- data_surveypart2[!duplicated(data_surveypart2$id), ]
+
+######################################################
+## 2) Import Survey Part I results for segmentation ##
+######################################################
+data_surveypart1 <- read_excel("input/part_I/EPS+Survey+Part+I_July+20,+2024_11.26.xlsx",
+                               sheet = "Data",
+                               range = "T1:AY1005")
+data_surveypart1 <- data_surveypart1[-1, ]
+
+income_brackets <- c("£0-15,000", "£15,001-30,000", "£30,001-45,000", "£45,001-60,000", "£60,001-75,000",
+                     "£75,001-90,000", "£90,001-105,000", "£105,001-120,000", "£120,001 or Above")
+# Remove rows where Q2.Income is NA
+data_surveypart1 <- data_surveypart1[!is.na(data_surveypart1$Q2.Income), ]
+# Factorize income variable
+data_surveypart1$Q2.Income <- factor(data_surveypart1$Q2.Income,
+                                     levels = income_brackets,
+                                     ordered = TRUE)
+
+##########
+# Poorer #
+##########
+quartile_income25 <- levels(data_surveypart1$Q2.Income)[
+  quantile(as.numeric(data_surveypart1$Q2.Income), 0.25, type = 1)
+]
+
+poorer <- data_surveypart1 %>%
+  dplyr::filter(Q2.Income <= quartile_income25) %>%
+  dplyr::select(id = Q0.ID, poorer = Q2.Income)
+
+##########
+# Richer #
+##########
+quartile_income75 <- levels(data_surveypart1$Q2.Income)[
+  quantile(as.numeric(data_surveypart1$Q2.Income), 0.75, type = 1)
+]
+
+richer <- data_surveypart1 %>%
+  dplyr::filter(Q2.Income > quartile_income75) %>%
+  dplyr::select(id = Q0.ID, richer = Q2.Income)
+
+# Put both into a list
+data_study <- list(
+  base = data_surveypart2,
+  poorer = inner_join(data_surveypart2, poorer, by = "id"),
+  richer = inner_join(data_surveypart2, richer, by = "id")
+)
+
+
+# Save the list object as an RDS file
+saveRDS(data_study, file = paste0("lorenz_curves&copula/rds/data_study.rds"))
+
+#######################
+##  Sample (X_i,Z_i) ##
+#######################
+# Income breakpoints
+breaks_inc <- c(5000, 15000, 30000, 45000, 60000, 75000,
+                90000, 105000, 120000, 135000)
+
+# Helper to build (X,Z) dataset for one subset
+build_sample <- function(df, income_brackets) {
+  indices <- which(income_brackets %in% unique(df$income))
+  breaks_sel <- breaks_inc[unique(c(indices, indices + 1))]
+  inc_brackets_sel <- income_brackets[indices]
+
+  # Midpoints of ranges
+  midpoints_inc <- (breaks_sel[-length(breaks_sel)] + breaks_sel[-1]) / 2
+  names(midpoints_inc) <- inc_brackets_sel
+
+  X <- midpoints_inc[df$income]
+  sample_df <- data.frame(X = X, Z = df$Z)
+
+  return(list(sample = sample_df, midpoints = midpoints_inc))
+}
+
+# Create another list with the (X,Z) samples
+res           <- lapply(data_study, build_sample, income_brackets = income_brackets)
+data          <- lapply(res, `[[`, "sample")
+midpoints_inc <- lapply(res, `[[`, "midpoints")
+
+
+################################################################################
+###################### Step 1: Recover Income (X) sample  ######################
+################################################################################
+
+################################################################################
+################ 3rd approach (X, Z|X) sample (recovered sample) ###############
+################################################################################
+
+#############################################################################
+## (a) Use the DDFS fit \hat{F}_X(x), to generate a real income variate, x ##
+#############################################################################
+## 1. Get the DDFS fit of the ecdf of X
+ddfs_X <- lapply(data, function(df) {
+  d <- ddfs(sort(df$X), n = 4, phi_F = 0.8, q_F = 2)
+  plot(d, type = "distribution")
+  return(d)
+})
+
+# Save the list object as an RDS file
+saveRDS(ddfs_X, file = paste0("lorenz_curves&copula/rds/X/ddfs_X.rds"))
+
+## 2. Generate a real income variate, x
+X_new <- mapply(
+  function(obj, df) {
+    set.seed(123)
+    r.ddfs(obj, NROW(df))
+    },
+  obj = ddfs_X,
+  df = data,
+  SIMPLIFY = FALSE
+)
+
+############################################################################
+## (b)/(c) Find the index r. Generate a variate z|x, using the cdf F(z|x) ##
+############################################################################
+
+## 1. Compute F_{r,n}
+cdf_list <- lapply(data, function(df) {
+  X_levels <- sort(unique(df$X))
+
+  # Initialize list to store CDFs for this dataset (e.g. for base/poorer/richer)
+  cdf_list <- list()
+
+  for (x_r in X_levels) {
+    # Subset data for the current level of X
+    subset_data <- df[df$X == x_r, ]
+    # Calculate m_r, the number of observations for the current level of X
+    m_r <- nrow(subset_data)
+
+    # Calculate empirical CDF at each z in df$Z
+    cdf_values <- sapply(df$Z, function(z) sum(subset_data$Z <= z) / m_r)
+
+    data_cdf <- data.frame(Z = df$Z, F_r_n = cdf_values)
+    cdf_list[[as.character(x_r)]] <- data_cdf[order(data_cdf$Z), ]
+  }
+
+  return(cdf_list)
+})
+
+# View the result for a particular level
+tail(cdf_list$base[["67500"]], 20)
+tail(cdf_list$poorer[["10000"]], 20)
+tail(cdf_list$richer[["82500"]], 20)
+
+
+## 2. Find the index r
+r_values <- mapply(function(x_vec, mids) {
+  findInterval(
+    x_vec,
+    vec = c(min(breaks_inc), mids, max(breaks_inc)),
+    rightmost.closed = TRUE
+  ) - 1
+}, x_vec = X_new, mids = midpoints_inc, SIMPLIFY = FALSE)
+
+
+## 3. Compute F(z|x)
+# If `r == 1`, set `cdf_prev` to the same row as `cdf_current` since  F_0(x|z_0) = F_1(x|z_1)
+cdf_indices <- mapply(function(r, mids) {
+  list(
+    r_index     = ifelse(r == 0, r + 1, r),
+    r_plus1_idx = ifelse(r == length(mids), r, r + 1)
+  )
+}, r = r_values, mids = midpoints_inc, SIMPLIFY = FALSE)
+
+cdf_r_indices         <- lapply(cdf_indices, `[[`, "r_index")
+cdf_r_plus_1_indices   <- lapply(cdf_indices, `[[`, "r_plus1_idx")
+
+# Extract `cdf_prev` and `cdf_current` using matrix subsetting
+cdf_r <- lapply(names(cdf_r_indices), function(name) {
+  lapply(cdf_r_indices[[name]], function(i) cdf_list[[name]][[i]])
+})
+names(cdf_r) <- names(cdf_r_indices)
+
+cdf_r_plus_1 <- lapply(names(cdf_r_plus_1_indices), function(name) {
+  lapply(cdf_r_plus_1_indices[[name]], function(i) cdf_list[[name]][[i]])
+})
+names(cdf_r_plus_1) <- names(cdf_r_plus_1_indices)
+
+# Calculate the weight w
+w <- lapply(names(X_new), function(name) {
+  (X_new[[name]] - midpoints_inc[[name]][cdf_r_indices[[name]]]) /
+    (midpoints_inc[[name]][cdf_r_plus_1_indices[[name]]] - midpoints_inc[[name]][cdf_r_indices[[name]]])
+})
+names(w) <- names(X_new)
+
+# Simulate binomial variable
+z <- lapply(names(w), function(name) {
+  # set.seed(123)
+  n <- length(w[[name]])
+  rbinom(n, size = 1, prob = w[[name]])
+})
+names(z) <- names(w)
+
+# Compute the mixed cdf F(z|x)
+mixed_cdf <- lapply(names(w), function(name) {
+  mapply(function(w_i, cdf_r, cdf_r_plus_1) {
+    (1 - w_i) * cdf_r[["F_r_n"]] + w_i * cdf_r_plus_1[["F_r_n"]]
+  },
+  z[[name]], cdf_r[[name]], cdf_r_plus_1[[name]], SIMPLIFY = FALSE)
+})
+names(mixed_cdf) <- names(z)
+
+mixed_cdf$richer[[1]]
+
+## 4. Generate a variate z|x
+Z_new <- lapply(names(mixed_cdf), function(group) {
+  unlist(lapply(mixed_cdf[[group]], function(F_X) {
+    df <- data.frame(X = sort(data[[group]]$Z), F_X = F_X)
+    u <- runif(1)
+    inverse_F_X(u, df = df)
+  }))
+})
+
+names(Z_new) <- names(mixed_cdf)
+
+# data.frame for copula modelling
+data_copula <- lapply(names(X_new), function(name) {
+  data.frame(
+    X = X_new[[name]],
+    Z = Z_new[[name]]
+  )
+})
+names(data_copula) <- names(X_new)
+
+plot(data_copula$base)
+cor(data_copula$base)
+
+plot(data_copula$poorer)
+cor(data_copula$poorer)
+
+plot(data_copula$richer)
+cor(data_copula$richer)
+
+saveRDS(data_copula, file = paste0("lorenz_curves&copula/rds/X/data_copula.rds"))
+
+# Scatter plot
+par(mar = c(5, 5, 4, 2) + 0.1)
+plot(data_copula$base$X, data_copula$base$Z, col = "black", pch = 16,
+     main = "",
+     xlab = "Real Income (X)", ylab = "Standard of Living (Z)",
+     cex.main = 1.5, cex.axis = 1.25, cex.lab = 1.25)
+par(mar = c(5, 4, 4, 2) + 0.1)
+
+dev.copy(pdf, paste0(output, "/data_scatterplot_recovered.pdf"),
+         width = 6, height = 6)
+dev.off()
+
+
+##########################
+### DDFS Bivariate fit ###
+##########################
+ddfs_XZ <- lapply(names(data_copula), function(name) {
+  fit <- ddfs(data = data_copula[[name]], n = 4, min.intknots = 8, phi_F = 0.8, q_F = 2)
+  plot(fit, type = "distribution", main = paste("Distribution:", name))
+  return(fit)
+})
+names(ddfs_XZ) <- names(data_copula)
+
+saveRDS(ddfs_XZ, file = paste0("lorenz_curves&copula/rds/X/ddfs_XZ.rds"))
+
+
+################################################################################
+###################### Step 2: DDFS fit of marginal CDFs #######################
+################################################################################
+
+###################
+## 1. Income (X) ##
+###################
+# CDF
+for (grp in names(data)) {
+  u_values <- seq(0, 1, length.out = 1000)
+  X_new <- q.ddfs(ddfs_X[[grp]], u_values)
+  pred_X_new <- predict.ddfs(ddfs_X[[grp]], newdata = X_new, type = "distribution")
+
+  ecdf_X <- cumsum(rep(1 / nrow(data[[grp]]), nrow(data[[grp]])))
+
+  plot(sort(data[[grp]]$X), ecdf_X,
+       ylab = "Cumulative probability", xlab = "X",
+       lwd = 2, type = "s")
+  lines(X_new, pred_X_new, col = "red", lwd = 2)
+
+  legend("bottomright",
+         legend = c(expression(F[X*","*n](x)), expression(hat(F)[X](x))),
+         col = c("black", "red"),
+         lwd = 2,
+         bty = "n")
+
+  for (knt in ddfs_X[[grp]]$F_X_hat$knots) {
+    abline(v = knt, col = "gray", lty = 2)
+  }
+
+  # Save the current plot to PDF
+  dev.copy(pdf, file = paste0(output, "/GeDS_F_X_", grp, ".pdf"),
+           width = 6, height = 8)
+  dev.off()
+}
+
+
+###############################
+## 2. Standard of Living (Z) ##
+###############################
+## 1. Get the DDFS fit of the ecdf of Z
+ddfs_Z <- lapply(names(data), function(grp) {
+  fit <- ddfs(sort(data[[grp]]$Z), n = 4, phi_F = 0.8, q_F = 2)
+  plot(fit, type = "distribution")
+  fit
+})
+names(ddfs_Z) <- names(data)
+
+# ddfs_Z_recovered <- ddfs(sort(data_copula$Z), n = 4, min_iterations = 3 + 2,
+#                          phi_F = 0.9, q_F = 2, plot = TRUE)
+
+# Save the list object as an RDS file
+saveRDS(ddfs_Z, file = paste0("lorenz_curves&copula/rds/X/ddfs_Z.rds"))
+
+## 2. Generate a standard of living variate, Z
+Z_new <- mapply(
+  function(obj, df) {
+    set.seed(123)
+    r.ddfs(obj, NROW(df))
+  },
+  obj = ddfs_Z,
+  df = data,
+  SIMPLIFY = FALSE
+)
+
+# CDF
+for (grp in names(data)) {
+  u_values <- seq(0, 1, length.out = 1000)
+  Z_new <- q.ddfs(ddfs_Z[[grp]], u_values)
+  pred_Z_new <- predict.ddfs(ddfs_Z[[grp]], newdata = Z_new, type = "distribution")
+
+  ecdf_Z <-  cumsum(rep(1/nrow(data[[grp]]), nrow(data[[grp]])))
+
+  plot(sort(data[[grp]]$Z), ecdf_Z,
+       ylab = "Cumulative probability", xlab = "Z",
+       lwd = 2, type = "s")
+  lines(Z_new, pred_Z_new, col = "green4", lwd = 2)
+  # # z|x
+  # lines(sort(data_copula$Z), ecdf_Z, lwd = 2, lty = 2, type = "s")
+  # lines(Z_new, pred_Z_recovered_new, col = "green4", lwd = 2, lty = 2)
+  legend("bottomright",
+         legend = c(expression(F[Z*","*n](z)),
+                    expression(hat(F)[Z](z))),
+         # expression(F[Z~"|"~X*","*n](z~"|"~x)),
+         # expression(hat(F)[Z~"|"~X](z~"|"~x))),
+         col = c("black", "green4", "black", "green4"),
+         lwd = 2,
+         lty = c(1,1,2,2),
+         bty = "n")
+  for(knt in ddfs_Z[[grp]]$F_X_hat$knots) {
+    abline(v = knt, col = "gray", lty = 2)
+  }
+
+  # Save the current plot to PDF
+  dev.copy(pdf, file = paste0(output, "/GeDS_F_Z_", grp, ".pdf"),
+           width = 6, height = 8)
+  dev.off()
+}
+
+
+################################################################################
+################################# LORENZ CURVE #################################
+################################################################################
+# don´t run for suffix = poorer or richer
+ddfs_fit_X <- ddfs_X$base; ddfs_fit_Z <- ddfs_Z$base; data_copula_XZ <- data_copula$base
+source("lorenz_curves&copula/utils/lorenz_curvesXZ.R")
+
+
+################################################################################
+#################################### COPULA ####################################
+################################################################################
+setwd("C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/Perceived Income Inequality/Code/2024-07-19_study")
+suffix <- ""; xlabel <- "Real Income (X)"
+
+source("lorenz_curves&copula/utils/copula.R")
+
+# don´t run for suffix = poorer or richer
+ginicoef_copulacor <- data.frame(grothe_gini_X = c(gini_x_emp, gini_x),
+                                 grothe_gini_Z = c(gini_y_emp, gini_y),
+                                 grothe_MEGC = c(megc_emp, megc),
+                                 DDFS_gini_X = c(calculate_gini(lorenz_df_X), NA),
+                                 DDFS_gini_X_tilde = c(calculate_gini(lorenz_df_X_tilde), NA),
+                                 DDFS_gini_Z = c(calculate_gini(lorenz_df_Z), NA),
+                                 rho = c(IFMfitn@estimate, NA), kendall_tau = c(IFM_results$kendall_tau[1], NA)
+)
+print(ginicoef_copulacor)
+# Create LaTeX table
+latex_table <- xtable(ginicoef_copulacor, digits = 6)
+# Save the LaTeX code to a file
+print(latex_table, file = paste0(output, "/tex/ginicoef_copulacor.tex"))
+
+

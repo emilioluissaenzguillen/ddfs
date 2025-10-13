@@ -1,0 +1,12 @@
+{
+    "args": [
+        "-DEIGEN_DONT_VECTORIZE",
+        "-nostdinc"
+    ],
+    "pch": "RcppArmadillo",
+    "is_cpp": true,
+    "hash": "17457564911740580451",
+    "compiler": "14695981039346656037",
+    "rversion": "4.5.0",
+    "dbversion": 4
+}

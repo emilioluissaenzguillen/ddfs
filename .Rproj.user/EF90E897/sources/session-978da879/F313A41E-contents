@@ -1,0 +1,106 @@
+################################################################################
+############################# Step 3: Lorenz Curve #############################
+################################################################################
+# Explicit inversion of the GeDS CDF fits
+u_values <- seq(0, 1, length.out = 1000)
+# Compute the Lorenz curve for these values
+inv_F_X <- function(u) {
+  return(inv_PPolyGeDS(ppoly_cubicX, u))
+}
+inv_F_Z <- function(u) {
+  return(inv_PPolyGeDS(ppoly_cubicZ, u))
+}
+L_n_values_X <- lorenz_curve(u = u_values, inverse_F_X = function(u) q.ddfs(ddfs_fit_X, u))
+L_n_values_Z <- lorenz_curve(u = u_values, inverse_F_X = function(u) q.ddfs(ddfs_fit_Z, u))
+
+lorenz_df_X <- data.frame(u = u_values, L_u = L_n_values_X)
+lorenz_df_Z <- data.frame(u = u_values, L_u = L_n_values_Z)
+
+# X tilde
+load("lorenz_curves&copula\\rds\\lorenz_df_X_tilde.RData")
+
+par(mar = c(5, 5, 4, 2) + 0.1)
+plot(lorenz_df_X, type = "s", col = "red", xlab = expression(u), ylab = expression(L(u)),
+     # main = bquote(
+     #   atop("Lorenz Curve (" * .(NROW(data_study)) * " people)",
+     #        Gini[X] == .(round(calculate_gini(lorenz_df_X), 4)) * ";" ~
+     #          Gini[tilde(X)] == .(round(calculate_gini(lorenz_df_X_tilde), 4)) * ";" ~
+     #          Gini[Z] == .(round(calculate_gini(lorenz_df_Z), 4))
+     #   )
+     # ),
+     ylim = c(0,1),
+     xlim = c(0,1),
+     lwd = 2
+)
+grid()
+abline(a = 0, b = 1, col = "black", lty = 2) # Line of equality
+
+lines(lorenz_df_X_tilde, type = "s", col = "blue", lwd = 2)
+lines(lorenz_df_Z, type = "s", col = "green4", lwd = 2)
+# x <- seq(0, 1, length.out = 1000)
+# y <- x^((1+sqrt(5))/2)
+# lines(x, y, type = "s", col = "gold", lwd = 2)
+legend("bottomright",  # Position of the legend
+       legend = c(expression(L[X] * (u)),
+                  expression(L[tilde(X)] * (u)),
+                  expression(L[Z] * (u))),
+                  # "Golden ratio"),
+       col = c("red", "blue", "green4"),
+               # "gold"),
+       lty = 1,
+       lwd = 2,
+       bty = "n")
+par(mar = c(5, 4, 4, 2) + 0.1)
+
+# Save the plot as a PDF
+dev.copy(pdf, paste0(output,"\\lorenz_curve_XZ.pdf"),
+         width=9.33, height=9.33)
+dev.off()
+
+################################################################################
+###### Step 4: Multivariate Extension of the Inverse Lorenz curve (MEILC) ######
+################################################################################
+library(reticulate)
+# Define the path to the directory containing MEILC_MEGC and add it to sys.path
+setwd(paste0(dirname(getwd()), "\\functions\\Multivariate_Extension_Lorenz_Gini-main\\Multivariate_Extension_Lorenz_Gini-main"))
+# Import the custom Python module
+megcmeilc <- import("MEILC_MEGC")
+np <- import("numpy")
+
+mult_lorenz <- megcmeilc$mult_lorenz(data_copula_XZ)
+
+C <- mult_lorenz[[1]]
+Y <- mult_lorenz[[2]]
+Z <- mult_lorenz[[3]]
+megc_emp <- mult_lorenz[[4]]
+gini_x_emp <- mult_lorenz[[5]]
+gini_y_emp <- mult_lorenz[[6]]
+
+# upper bound
+2/5 - 3/5*max(gini_x_emp,gini_y_emp)+(3/5)*gini_x_emp + (3/5)*gini_y_emp
+# lower bound
+(3/5)*gini_x_emp + (3/5)*gini_y_emp - 1/5
+
+
+X_star <- megcmeilc$x_star(data_copula_XZ)
+(6/5) * mean(X_star[,1]*X_star[,2]) + (3/5)*gini_x_emp + (3/5)*gini_y_emp - 1/5
+
+par(mar = c(5, 5, 4, 2) + 0.1)
+persp3D(x = C[1, ], y = Y[, 1], z = Z,
+        col = col, theta = -30, phi = 20, expand = 0.618,
+        xlab = "Z", # paste("\nZ\n Gini =", round(gini_y_emp, 4)),
+        ylab = "", # paste("\nX\n Gini =", round(gini_x_emp, 4)),
+        zlab = "\nProportion",
+        # main = bquote("MEGC" == .(round(megc_emp, 4)) ~ ""),
+        ticktype = "detail", colkey = FALSE, border = "black",
+        cex.main = 4, cex.axis = 3, cex.lab = 3)
+text3D(x = -0.15, y = 0.3, z = 0,
+       labels = "X",
+       add = TRUE, cex = 3, srt = -65)
+par(mar = c(5, 4, 4, 2) + 0.1)
+
+# Save the plot as a PDF
+dev.copy(png, paste0(output,"\\mult_lorenz_", round(megc_emp, 4),".png"),
+         width=1800, height=1800, res = 300)
+dev.off()
+

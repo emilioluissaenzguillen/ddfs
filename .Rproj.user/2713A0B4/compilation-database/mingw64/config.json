@@ -1,0 +1,25 @@
+{
+    "args": [
+        "-std=gnu++17",
+        "-IC:/Users/addj700/AppData/Local/Programs/R/R-4.4.3/include",
+        "-DNDEBUG",
+        "-fopenmp",
+        "-IC:/Users/addj700/AppData/Local/Programs/R/R-4.4.3/library/Rcpp/include",
+        "-DEIGEN_DONT_VECTORIZE",
+        "-nostdinc",
+        "-Ic:/rtools44/x86_64~1.pos/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.3.0/include/c++",
+        "-Ic:/rtools44/x86_64~1.pos/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.3.0/include/c++/x86_64-w64-mingw32.static.posix",
+        "-Ic:/rtools44/x86_64~1.pos/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.3.0/include/c++/backward",
+        "-Ic:/rtools44/x86_64~1.pos/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.3.0/include",
+        "-Ic:/rtools44/x86_64~1.pos/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.3.0/../../../../include",
+        "-Ic:/rtools44/x86_64~1.pos/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.3.0/include-fixed",
+        "-include",
+        "C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/PDF and CDF Estimation/R package/ddfs/.Rproj.user/2713A0B4/compilation-database/mingw64/cpp-definitions.h"
+    ],
+    "pch": "RcppArmadillo",
+    "is_cpp": true,
+    "hash": "17431793101740580451",
+    "compiler": "14560070257236426505",
+    "rversion": "4.4.3",
+    "dbversion": 4
+}

@@ -1,0 +1,26 @@
+{
+    "args": [
+        "-std=gnu++17",
+        "-IC:/Users/addj700/AppData/Local/Programs/R/R-4.4.2/include",
+        "-DNDEBUG",
+        "-fopenmp",
+        "-IC:/Users/addj700/AppData/Local/Programs/R/R-4.4.2/library/Rcpp/include",
+        "-IC:/Users/addj700/AppData/Local/Programs/R/R-4.4.2/library/RcppArmadillo/include",
+        "-DEIGEN_DONT_VECTORIZE",
+        "-nostdinc",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include/c++",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include/c++/x86_64-w64-mingw32.static.posix",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include/c++/backward",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/../../../../include",
+        "-IC:/rtools44/x86_64-w64-mingw32.static.posix/bin/../lib/gcc/x86_64-w64-mingw32.static.posix/13.2.0/include-fixed",
+        "-include",
+        "C:/Users/addj700/Dropbox/Bayes Business School/PhD/Research/PhD - Saenz, Emilio/Projects/PDF and CDF Estimation/R package/ddfs/.Rproj.user/777D9ED3/compilation-database/mingw64/cpp-definitions.h"
+    ],
+    "pch": "RcppArmadillo",
+    "is_cpp": true,
+    "hash": "17405700611740580451",
+    "compiler": "9381606054783649534",
+    "rversion": "4.4.2",
+    "dbversion": 4
+}

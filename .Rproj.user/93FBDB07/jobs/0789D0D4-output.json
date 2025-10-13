@@ -1,0 +1,1 @@
+[2,"Error in parse(file = script, keep.source = TRUE, encoding = encoding) : \r\n  C:/Users/addj700/AppData/Local/Temp/1331-9e7d-8d80-ba4a:8:1: unexpected symbol\r\n7: \r\n8: message\r\n   ^\r\nCalls: .rs.sourceWithProgress -> parse\r\nExecution halted\r\n"]

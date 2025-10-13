@@ -1,0 +1,6 @@
+
+
+res <- cdf_coef(basisMatrix_F_X_hat, F_X_hat, optm = "local")
+
+
+
