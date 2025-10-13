@@ -86,7 +86,7 @@ PPolyInv <- function(ppoly, y_new)
   # 2) Let us note that the first k (= number of internal knots) + 1 rows of the
   # matrix contain the n coefficients of the k + 1 consecutive pieces of the
   # piecewise polynomial representation.
-  coefficients <- ppoly$coefficients[1:(k+1), ]
+  coefficients <- ppoly$coefficients[1:(k+1), , drop = FALSE]
   ylim <- ppoly$coefficients[,1]
 
   aux <- data.frame(
