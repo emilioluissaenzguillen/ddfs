@@ -61,6 +61,14 @@ Dimitrova, D. S., Kaishev, V. K. and Saenz Guillen, E. (2025).
 Distribution and density function estimation using variable-knot splines.
 \emph{Manuscript submitted for publication.}
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/emilioluissaenzguillen/ddfs}
+  \item Report bugs at \url{https://github.com/emilioluissaenzguillen/ddfs/issues}
+}
+
+}
 \author{
 Dimitrina S. Dimitrova <D.Dimitrova@city.ac.uk>,
 Vladimir K. Kaishev <V.Kaishev@city.ac.uk> and
