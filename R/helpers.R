@@ -162,7 +162,7 @@ features <- function(x) {
     bin_pval <- function(p) {
       cut(p,
           breaks = c(0, 0.01, 0.025, 0.05, 0.1, 1),
-          labels = c("<=.01", ".01-.025", ".025-.05", ".05-.1", ">.1"),
+          labels = c("≤.01", ".01–.025", ".025–.05", ".05–.1", ">.1"),
           include.lowest = TRUE, right = FALSE)
     }
 
@@ -280,7 +280,7 @@ choose_params <- function(X, type) {
       # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_q_F_N=10000_", type, ".rds"))
       Gmodboost <- readRDS(system.file(paste0("choose_q_F_N=10000_", type, ".rds"), package = "ddfs"))
     }
-    probs <- predict(Gmodboost, feat_X, n = 2)
+    probs <- predict(Gmodboost, feat_X, n = 4)
     q_F <- ifelse(probs > 0.5, 2, 1)
 
     # phi_F
@@ -317,10 +317,10 @@ choose_params <- function(X, type) {
       Gmodboost <- readRDS(system.file(paste0("choose_beta_N=100_", type, ".rds"), package = "ddfs"))
     } else if (N >= int1 && N < int2) {
       # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_beta_N=1000_", type, ".rds"))
-      Gmodboost <- readRDS(system.file(paste0("choose_beta_N=1000", type, ".rds"), package = "ddfs"))
+      Gmodboost <- readRDS(system.file(paste0("choose_beta_N=1000_", type, ".rds"), package = "ddfs"))
     } else if (N >= int2) {
       # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_beta_N=10000_", type, ".rds"))
-      Gmodboost <- readRDS(system.file(paste0("choose_beta_N=10000", type, ".rds"), package = "ddfs"))
+      Gmodboost <- readRDS(system.file(paste0("choose_beta_N=10000_", type, ".rds"), package = "ddfs"))
     }
 
     beta <- predict(Gmodboost, feat_X, n = 4)

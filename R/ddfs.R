@@ -175,13 +175,38 @@
 #' Distribution and density function estimation using variable-knot splines.
 #' \emph{Manuscript submitted for publication.}
 
-ddfs <- function(data, n = 4L, min.intknots = 2L, max.intknots = 40L,
-                 beta = 0, phi_F = 0.3, q_F = 1L, stoptype = "RDMD",
+ddfs <- function(data, n = 4L, min.intknots = NULL, max.intknots = 40L,
+                 beta = NULL, phi_F = NULL, q_F = NULL, stoptype = "RDMD",
                  tails_count_threshold = 0.05, enforce_tail_decay = FALSE,
                  plot = FALSE, pdf = NULL, cdf = NULL, resids_plot = FALSE,
                  stop_plotting = 0L, schoenberg = FALSE) {
 
   extcall <- match.call()
+
+  # Automatic parameter selection
+  # Check for missing or NULL parameters
+  params_needed <- list(
+    min.intknots = min.intknots,
+    phi_F        = phi_F,
+    q_F          = q_F,
+    beta         = beta
+  )
+
+  # Identify which are missing
+  missing <- names(params_needed)[sapply(params_needed, function(x) is.null(x) || length(x) == 0)]
+
+  # If any are missing, call choose_params() once
+  if (length(missing) > 0) {
+    params_auto <- choose_params(X = data, type = "top_mean_Q3")
+
+    # Only fill in the missing ones
+    for (nm in missing) {
+      assign(nm, params_auto[[nm]])
+    }
+
+    message("⚙️ Automatic parameter selection applied for: ", paste(missing, collapse = ", "))
+  }
+
 
   min_iterations <- min.intknots + q_F
   max_iterations <- max.intknots + q_F
@@ -200,9 +225,6 @@ ddfs <- function(data, n = 4L, min.intknots = 2L, max.intknots = 40L,
     stop("'phi_F' must be a numeric scalar in the open interval (0, 1).")
   if (!is.numeric(q_F) || length(q_F) != 1 || q_F <= 0 || q_F %% 1 != 0)
     stop("'q_F' must be a positive integer.")
-
-
-
 
 
 
