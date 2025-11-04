@@ -1,11 +1,13 @@
 # ddfs
 
 The **ddfs** R package provides nonparametric estimation of univariate and
-bivariate **pdfs** and **cdfs** using variable-knot splines. This method leverages
-an adaptive data-driven knot selection process (from Geometrically Designed
-Splines) and enforces necessary shape constraints (non-negativity and monotonicity)
-through constrained spline estimation, combining theoretical robustness with
-practical usability.
+bivariate **pdfs** and **cdfs** using variable-knot splines.
+
+This method leverages an adaptive data-driven knot selection process (borrowed 
+from Geometrically Designed Splines) and enforces necessary constraints
+(non-negativity and monotonicity) through constrained spline estimation, combining
+theoretical robustness with practical usability.
+
 ---
 
 ## Installation
