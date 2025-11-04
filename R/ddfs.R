@@ -177,7 +177,7 @@
 
 ddfs <- function(data, n = 4L, min.intknots = NULL, max.intknots = 40L,
                  beta = NULL, phi_F = NULL, q_F = NULL, stoptype = "RDMD",
-                 tails_count_threshold = 0.05, enforce_tail_decay = FALSE,
+                 tails_count_threshold = 0.05, enforce_tail_decay = TRUE,
                  plot = FALSE, pdf = NULL, cdf = NULL, resids_plot = FALSE,
                  stop_plotting = 0L, schoenberg = FALSE) {
 
@@ -197,14 +197,14 @@ ddfs <- function(data, n = 4L, min.intknots = NULL, max.intknots = 40L,
 
   # If any are missing, call choose_params() once
   if (length(missing) > 0) {
-    params_auto <- choose_params(X = data, type = "top_mean_Q3")
+    params_auto <- suppressMessages(suppressWarnings(choose_params(X = data, type = "bw_top_mean_Q3")))
 
     # Only fill in the missing ones
     for (nm in missing) {
       assign(nm, params_auto[[nm]])
     }
 
-    message("⚙️ Automatic parameter selection applied for: ", paste(missing, collapse = ", "))
+    message("Automatic parameter selection applied for: ", paste(missing, collapse = ", "))
   }
 
 
@@ -232,7 +232,7 @@ ddfs <- function(data, n = 4L, min.intknots = NULL, max.intknots = 40L,
     fit <- UnivariateDensityFitter(X = data, n = n, min_iterations = min_iterations,
                                    max_iterations = max_iterations, max.intknots = 1,
                                    beta = beta, phi_F_X = phi_F, q_F_X = q_F, stoptype = stoptype,
-                                   tails_count_threshold = tails_count_threshold, enforce_tail_decay = enforce_tail_decay,
+                                   enforce_tail_decay = enforce_tail_decay,
                                    plot = plot, resids_plot = resids_plot, pdf = pdf, cdf = cdf, stop_plotting = stop_plotting,
                                    schoenberg = schoenberg)
   } else if (NCOL(data) == 2) {

@@ -162,7 +162,7 @@ features <- function(x) {
     bin_pval <- function(p) {
       cut(p,
           breaks = c(0, 0.01, 0.025, 0.05, 0.1, 1),
-          labels = c("≤.01", ".01–.025", ".025–.05", ".05–.1", ">.1"),
+          labels = c("<=.01", ".01-.025", ".025-.05", ".05-.1", ">.1"),
           include.lowest = TRUE, right = FALSE)
     }
 
@@ -238,35 +238,54 @@ choose_params <- function(X, type) {
     feat_X <- features(X)
 
     ## 1) min.intknots, min(k-q)
-    X_trim <- sort(X)
-    # alpha
-    if (N < int1) {
-      # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_alpha_N=100_", type, ".rds"))
-      Gmodboost <- readRDS(system.file(paste0("choose_alpha_N=100_", type, ".rds"), package = "ddfs"))
-    } else if (N >= int1 && N < int2) {
-      # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_alpha_N=1000_", type, ".rds"))
-      Gmodboost <- readRDS(system.file(paste0("choose_alpha_N=1000_", type, ".rds"), package = "ddfs"))
-    } else if (N >= int2) {
-      # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_alpha_N=10000_", type, ".rds"))
-      Gmodboost <- readRDS(system.file(paste0("choose_alpha_N=10000_", type, ".rds"), package = "ddfs"))
-    }
-    alpha <- predict(Gmodboost, feat_X, n = 4)
-    alpha <- min(max(alpha, 0), 1) # make sure alpha is a probability
 
-    # bw
-    if (N < int1) {
-      # tree <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_bw_N=100_", type, ".rds"))
-      tree <- readRDS(system.file(paste0("choose_bw_N=100_", type, ".rds"), package = "ddfs"))
-    } else if (N >= int1 && N < int2) {
-      # tree <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_bw_N=1000_", type, ".rds"))
-      tree <- readRDS(system.file(paste0("choose_bw_N=1000_", type, ".rds"), package = "ddfs"))
-    } else if (N >= int2) {
-      # tree <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_bw_N=10000_", type, ".rds"))
-      tree <- readRDS(system.file(paste0("choose_bw_N=10000_", type, ".rds"), package = "ddfs"))
-    }
-    bw <- as.character(predict(tree, newdata = feat_X, type = "class"))
+    if (startsWith(type, "bw")) {
+      X_trim <- sort(X)
+      # alpha
+      if (N < int1) {
+        # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_alpha_N=100_", type, ".rds"))
+        Gmodboost <- readRDS(system.file(paste0("choose_alpha_N=100_", type, ".rds"), package = "ddfs"))
+      } else if (N >= int1 && N < int2) {
+        # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_alpha_N=1000_", type, ".rds"))
+        Gmodboost <- readRDS(system.file(paste0("choose_alpha_N=1000_", type, ".rds"), package = "ddfs"))
+      } else if (N >= int2) {
+        # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_alpha_N=10000_", type, ".rds"))
+        Gmodboost <- readRDS(system.file(paste0("choose_alpha_N=10000_", type, ".rds"), package = "ddfs"))
+      }
+      alpha <- predict(Gmodboost, feat_X, n = 4)
+      alpha <- min(max(alpha, 0), 1) # make sure alpha is a probability
 
-    min.intknots <- min_intknots_univ(X, alpha, method = bw)
+      # bw
+      if (N < int1) {
+        # tree <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_bw_N=100_", type, ".rds"))
+        tree <- readRDS(system.file(paste0("choose_bw_N=100_", type, ".rds"), package = "ddfs"))
+      } else if (N >= int1 && N < int2) {
+        # tree <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_bw_N=1000_", type, ".rds"))
+        tree <- readRDS(system.file(paste0("choose_bw_N=1000_", type, ".rds"), package = "ddfs"))
+      } else if (N >= int2) {
+        # tree <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_bw_N=10000_", type, ".rds"))
+        tree <- readRDS(system.file(paste0("choose_bw_N=10000_", type, ".rds"), package = "ddfs"))
+      }
+      bw <- as.character(predict(tree, newdata = feat_X, type = "class"))
+
+      min.intknots <- min_intknots_univ(X, alpha, method = bw)
+
+    } else if (startsWith(type, "default")) {
+      # min.intknots
+      if (N < int1) {
+        # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_min.intknots_N=100_", type, ".rds"))
+        Gmodboost <- readRDS(system.file(paste0("choose_min.intknots_N=100_", type, ".rds"), package = "ddfs"))
+      } else if (N >= int1 && N < int2) {
+        # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_min.intknots_N=1000_", type, ".rds"))
+        Gmodboost <- readRDS(system.file(paste0("choose_min.intknots_N=1000_", type, ".rds"), package = "ddfs"))
+      } else if (N >= int2) {
+        # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_min.intknots_N=10000_", type, ".rds"))
+        Gmodboost <- readRDS(system.file(paste0("choose_min.intknots_N=10000_", type, ".rds"), package = "ddfs"))
+      }
+      min.intknots <- round(predict(Gmodboost, feat_X, n = 4))
+
+    }
+
 
     ## 2) phi_F and q_F
     # q_F
@@ -280,7 +299,7 @@ choose_params <- function(X, type) {
       # Gmodboost <- readRDS(paste0("/users/addj700/archive/ddfs/R/inst/choose_q_F_N=10000_", type, ".rds"))
       Gmodboost <- readRDS(system.file(paste0("choose_q_F_N=10000_", type, ".rds"), package = "ddfs"))
     }
-    probs <- predict(Gmodboost, feat_X, n = 4)
+    probs <- predict(Gmodboost, feat_X, n = 2)
     q_F <- ifelse(probs > 0.5, 2, 1)
 
     # phi_F
@@ -309,7 +328,7 @@ choose_params <- function(X, type) {
       }
     }
     phi_F <- predict(Gmodboost, feat_X, n = 4)
-    phi_F <- max(min(phi_F, 1 - 1e-8), 1e-8) # make sure it is in (0,1)
+    phi_F <- max(min(phi_F, 0.995), 0.1)  # ensure 0.1 <= phi_F <= 0.995
 
     ## 3) beta
     if (N < int1) {

@@ -14,7 +14,7 @@ ddfs(
   q_F = NULL,
   stoptype = "RDMD",
   tails_count_threshold = 0.05,
-  enforce_tail_decay = FALSE,
+  enforce_tail_decay = TRUE,
   plot = FALSE,
   pdf = NULL,
   cdf = NULL,

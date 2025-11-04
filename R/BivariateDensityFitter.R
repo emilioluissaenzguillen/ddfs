@@ -49,10 +49,10 @@ BivariateDensityFitter <- function(XY, n = 3L, min_iterations = 1,
   leftY_decreasingtail <- count_lowerY < threshold
   rightY_decreasingtail <- count_upperY < threshold
 
-  leftX_decreasingtail <- rightX_decreasingtail <- leftY_decreasingtail <- rightY_decreasingtail <- TRUE
-
-  # print(paste0("leftX_decreasingtail=", leftX_decreasingtail, " rightX_decreasingtail=", rightX_decreasingtail))
-  # print(paste0("leftY_decreasingtail=", leftY_decreasingtail, " rightY_decreasingtail=", rightY_decreasingtail))
+  # print(paste0("leftX_decreasingtail=", leftX_decreasingtail, " ", count_lowerX,
+  #              " rightX_decreasingtail=", rightX_decreasingtail, " ", count_upperX))
+  # print(paste0("leftY_decreasingtail=", leftY_decreasingtail, " ", count_lowerY,
+  #              " rightY_decreasingtail=", rightY_decreasingtail, " ", count_upperY))
 
   # Iterate
   for (iter in 1:max_iterations) {

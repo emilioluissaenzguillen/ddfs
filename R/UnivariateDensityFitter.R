@@ -13,7 +13,7 @@
 UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
                                     max_iterations = 50L, max.intknots = 1,
                                     beta = 0, phi_F_X = 0.3, q_F_X = 1, stoptype = "RDMD",
-                                    tails_count_threshold = 0.05, enforce_tail_decay = FALSE,
+                                    enforce_tail_decay = TRUE,
                                     plot = FALSE, resids_plot = FALSE, pdf = NULL, cdf = NULL,
                                     stop_plotting = 0, schoenberg = FALSE)
 {
@@ -42,20 +42,21 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
     model = NULL
   )
 
-  if (!enforce_tail_decay) {
-    # Check whether f(X) → 0 as X → ±∞
-    # Calculate proportion of values in the lower and upper 5% of the range
-    t_function <- function(N) {
-      exp(1/3)*log(N) / (N^(1 + 1/log(N)))
-    }
-    count_lower <- sum(X <= range(X)[1] + diff(range(X)) * t_function(length(X)) ) / length(X) # lower 5%; length(X)/10000
-    count_upper <- sum(X > range(X)[2] - diff(range(X)) * t_function(length(X)) ) / length(X)  # upper 5%
-    threshold <- tails_count_threshold * (1+exp(1)/length(X)^(1/3))
+  if (enforce_tail_decay) {
 
-    left_decreasingtail <- count_lower < threshold
-    right_decreasingtail <- count_upper < threshold
 
-    # Extra tail check
+    # # Option 1
+    # t_function <- function(N) log(N)/N
+    #
+    # count_lower <- sum(X <= range(X)[1] + diff(range(X)) * t_function(length(X)) ) / length(X) # lower 5%; length(X)/10000
+    # count_upper <- sum(X > range(X)[2] - diff(range(X)) * t_function(length(X)) ) / length(X)  # upper 5%
+    # threshold <- tails_count_threshold
+    #
+    # left_decreasingtail <- count_lower < threshold
+    # right_decreasingtail <- count_upper < threshold
+
+
+    # Option 2
     counts <- hist(X, plot = FALSE)$counts # breaks = sqrt(length(X))*(1+length(X)^(-0.1))
 
     if (suppressMessages(suppressWarnings(dip.test(X)$p.value)) >= 0.3) {
@@ -69,11 +70,49 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
     # plot(Gmod, n = 2)
     Gmod <- PPolyRep(Gmod, n = 2)
 
-    if (Gmod$coefficients[1,2] < 1/3) {
+    left_decreasingtail <- right_decreasingtail <- TRUE
+
+    if (Gmod$coefficients[1,2] < 5/2) {
       left_decreasingtail <- FALSE
-    } else if (Gmod$coefficients[nrow(Gmod$coefficients)-1, 2] > -1/3) {
+    }
+
+    if (Gmod$coefficients[nrow(Gmod$coefficients)-1, 2] > -5/2) {
       right_decreasingtail <- FALSE
     }
+
+
+    # # Option 3
+    # # Check whether f(X) → 0 as X → ±∞
+    # # Calculate proportion of values in the lower and upper 5% of the range
+    # t_function <- function(N) {
+    #   exp(1/3)*log(N) / (N^(1 + 1/log(N)))
+    # }
+    # count_lower <- sum(X <= range(X)[1] + diff(range(X)) * t_function(length(X)) ) / length(X) # lower 5%; length(X)/10000
+    # count_upper <- sum(X > range(X)[2] - diff(range(X)) * t_function(length(X)) ) / length(X)  # upper 5%
+    # threshold <- tails_count_threshold * (1+exp(1)/length(X)^(1/3))
+    #
+    # left_decreasingtail <- count_lower < threshold
+    # right_decreasingtail <- count_upper < threshold
+    #
+    # # Extra tail check
+    # counts <- hist(X, plot = FALSE)$counts # breaks = sqrt(length(X))*(1+length(X)^(-0.1))
+    #
+    # if (suppressMessages(suppressWarnings(dip.test(X)$p.value)) >= 0.3) {
+    #   Gmod <- suppressMessages(suppressWarnings(NGeDS(counts ~ f(seq_along(counts)),
+    #                                                   min.intknots = 1, max.intknots = 1)))
+    # } else {
+    #   Gmod <- suppressMessages(suppressWarnings(NGeDS(counts ~ f(seq_along(counts)),
+    #                                                   phi = 0.99)))
+    # }
+    #
+    # # plot(Gmod, n = 2)
+    # Gmod <- PPolyRep(Gmod, n = 2)
+    #
+    # if (Gmod$coefficients[1,2] < 1/3) {
+    #   left_decreasingtail <- FALSE
+    # } else if (Gmod$coefficients[nrow(Gmod$coefficients)-1, 2] > -1/3) {
+    #   right_decreasingtail <- FALSE
+    # }
 
     # # Check whether f(X) → 0 as X → ±∞
     # # Calculate proportion of values in the lower and upper 5% of the range
@@ -89,7 +128,7 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
     # print(paste0("left_decreasingtail=", left_decreasingtail, " right_decreasingtail=", right_decreasingtail))
 
   } else {
-    left_decreasingtail <-  right_decreasingtail <- TRUE
+    left_decreasingtail <-  right_decreasingtail <- FALSE
 
   }
 
