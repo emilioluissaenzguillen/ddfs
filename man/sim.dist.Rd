@@ -35,7 +35,7 @@ Supported options include:
   \item \code{"Bimodal"}: \eqn{\frac{1}{2}N(0, (1/10)^2) + \frac{1}{2}N(5, 1)}
   \item \code{"Separated bimodal"}: \eqn{\frac{1}{2}N(-2, (1/2)^2) + \frac{1}{2}N(2, (1/2)^2)}
   \item \code{"Skewed bimodal"}: \eqn{\frac{3}{4}N(0,1) + \frac{1}{4}N(3/2, (1/3)^2)}
-  \item \code{"MixGauss"}: \eqn{0.15N(-0.25,1/3) + 0.85N(3.25,1)}
+  \item \code{"MixGauss1"}: \eqn{0.15N(-0.25,1/3) + 0.85N(3.25,1)}
   \item \code{"MixGauss2"}: \eqn{\frac{5}{6}N(3,1) + \frac{5}{36}N(8, (1/3)^2) + \frac{1}{36}N(10, (1/9)^2)}
   \item \code{"MixGauss3"}: \eqn{0.3N(1, 0.5^2) + 0.2N(4.5, 1.2^2) + 0.5N(8, 0.8^2)}
   \item \code{"Mix1d"}: \eqn{0.8\chi^2(3) + 0.2N(7,1)}
@@ -48,7 +48,7 @@ Supported options include:
   \item \code{"BivGauss_0.5"}: Bivariate standard normal distribution with correlation \eqn{\rho = 0.5}
   \item \code{"BivGauss_0.8"}: Bivariate standard normal distribution with correlation \eqn{\rho = 0.8}
 
-  \item \code{"BivBiModGauss"}: Bivariate Gaussian mixture: \eqn{0.8 \cdot N(\mu_1, \Sigma_1) + 0.2 \cdot N(\mu_2, \Sigma_2)}, with
+  \item \code{"BivBiModGauss1"}: Bivariate Gaussian mixture: \eqn{0.8 \cdot N(\mu_1, \Sigma_1) + 0.2 \cdot N(\mu_2, \Sigma_2)}, with
   \eqn{\mu_1 = (5.5, 5.5)}, \eqn{\Sigma_1 = \begin{pmatrix} 0.36 & 0.108 \\ 0.108 & 0.36 \end{pmatrix}},
   \eqn{\mu_2 = (7, 7)}, and \eqn{\Sigma_2 = \begin{pmatrix} 0.16 & 0.048 \\ 0.048 & 0.16 \end{pmatrix}}
 
@@ -84,7 +84,7 @@ examples <- c("Gaussian", "Student-t", "Exponential", "Chi-square", "Gamma", "We
 "Log-normal", "Nakagami", "Kurtotic unimodal", "Outlier", "Skewed unimodal",
 "Strongly skewed", "Merton's jump diffusion", "Kou's double exponential",
 "GEV Type I", "GEV Type II", "GEV Type III",
-"MixGauss", "Mix1d", "MixGauss2",
+"MixGauss1", "Mix1d", "MixGauss2",
 "Bimodal", "Separated bimodal", "Skewed bimodal",
 "Trimodal", "Smooth comb", "Claw")
 par(mfrow = c(2,3))

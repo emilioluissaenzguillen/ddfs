@@ -32,12 +32,16 @@
 #' @param stoptype A character string indicating the type of ddfs stopping rule
 #' to be used. It should be either one of \code{"RDMD"}, \code{"SRMD"}, \code{"RD"}
 #' or \code{"SR"}. See details.
-#' @param tails_count_threshold Parameter controlling the required data concentration
-#' in the tails in order to omit the additional constraints \eqn{\theta_1 = 0} and
-#' \eqn{\theta_p = 0} in the maximum likelihood estimation of the spline coefficients.
-#' @param enforce_tail_decay Logical; if \code{TRUE} \eqn{\theta_1 = 0} and
-#' \eqn{\theta_p = 0} is imposed in the maximum likelihood estimation of the
-#' spline coefficients.
+#' @param tail_decay Character string controlling whether tail-decay constraints
+#' are imposed in the univariate fit. Use \code{"auto"} to choose the constrained
+#' tail(s) by a histogram-based rule, \code{"none"} to disable the constraints,
+#' \code{"left"} or \code{"right"} to constrain only one tail, or \code{"both"}
+#' to constrain both tails.
+#' @param tails_count_threshold Numeric threshold used only for bivariate fits.
+#' For each margin, the algorithm computes the proportion of observations falling
+#' in the lower and upper 5% of the observed range. If that proportion is below
+#' this threshold, the corresponding tail is treated as decreasing and the
+#' associated boundary constraint is imposed. Ignored for univariate fits.
 #' @param plot Logical indicating whether to plot or not the pdf/cdf fits at
 #' each iteration. Default is \code{FALSE}.
 #' @param pdf An optional function representing the true probability density function
@@ -132,8 +136,8 @@
 #'
 #' print(ddfs_fit)
 #' summary(ddfs_fit)
-#' coef(ddfs_fit, type = "pdf")
-#' coef(ddfs_fit, type = "cdf")
+#' coef(ddfs_fit, fit = "pdf")
+#' coef(ddfs_fit, fit = "cdf")
 #' knots(ddfs_fit, options = "internal")
 #'
 #'\dontrun{
@@ -152,8 +156,8 @@
 #'
 #' print(ddfs_fit)
 #' summary(ddfs_fit)
-#' coef(ddfs_fit, type = "pdf")
-#' coef(ddfs_fit, type = "cdf")
+#' coef(ddfs_fit, fit = "pdf")
+#' coef(ddfs_fit, fit = "cdf")
 #' knots(ddfs_fit, options = "internal")
 #' }
 #'
@@ -177,11 +181,19 @@
 
 ddfs <- function(data, n = 4L, min.intknots = NULL, max.intknots = 40L,
                  beta = NULL, phi_F = NULL, q_F = NULL, stoptype = "RDMD",
-                 tails_count_threshold = 0.05, enforce_tail_decay = TRUE,
+                 tail_decay = c("auto", "none", "left", "right", "both"),
+                 tails_count_threshold = 0.05,
                  plot = FALSE, pdf = NULL, cdf = NULL, resids_plot = FALSE,
                  stop_plotting = 0L, schoenberg = FALSE) {
 
   extcall <- match.call()
+  # Input checks for data structure
+  if (missing(data) || is.null(data)) {
+    stop("'data' must be provided.")
+  }
+  if (!(NCOL(data) %in% c(1L, 2L))) {
+    stop("'data' must have exactly one column (univariate) or two columns (bivariate).")
+  }
 
   # Automatic parameter selection
   # Check for missing or NULL parameters
@@ -200,9 +212,7 @@ ddfs <- function(data, n = 4L, min.intknots = NULL, max.intknots = 40L,
     params_auto <- suppressMessages(suppressWarnings(choose_params(X = data, type = "bw_top_mean_Q3")))
 
     # Only fill in the missing ones
-    for (nm in missing) {
-      assign(nm, params_auto[[nm]])
-    }
+    list2env(params_auto[missing], envir = environment())
 
     message("Automatic parameter selection applied for: ", paste(missing, collapse = ", "))
   }
@@ -232,7 +242,7 @@ ddfs <- function(data, n = 4L, min.intknots = NULL, max.intknots = 40L,
     fit <- UnivariateDensityFitter(X = data, n = n, min_iterations = min_iterations,
                                    max_iterations = max_iterations, max.intknots = 1,
                                    beta = beta, phi_F_X = phi_F, q_F_X = q_F, stoptype = stoptype,
-                                   enforce_tail_decay = enforce_tail_decay,
+                                   tail_decay = tail_decay,
                                    plot = plot, resids_plot = resids_plot, pdf = pdf, cdf = cdf, stop_plotting = stop_plotting,
                                    schoenberg = schoenberg)
   } else if (NCOL(data) == 2) {
@@ -248,4 +258,5 @@ ddfs <- function(data, n = 4L, min.intknots = NULL, max.intknots = 40L,
 
   return(fit)
 }
+
 

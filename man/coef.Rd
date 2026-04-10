@@ -5,13 +5,13 @@
 \alias{coef.ddfs}
 \title{Coef method for ddfs objects}
 \usage{
-\method{coef}{ddfs}(object, type = c("pdf", "cdf"), ...)
+\method{coef}{ddfs}(object, fit = c("pdf", "cdf"), ...)
 }
 \arguments{
 \item{object}{the  \code{\link{ddfs}} object from which the
 coefficients of the selected pdf/cdf should be extracted.}
 
-\item{type}{Character string, either `"pdf"` or `"cdf"`, indicating which
+\item{fit}{Character string, either `"pdf"` or `"cdf"`, indicating which
 coefficient vector to return; cdf coefficients are computed as weighted sums
 of the pdf coefficients, where the weights depend on the knot locations.}
 

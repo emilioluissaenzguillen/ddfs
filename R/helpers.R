@@ -136,10 +136,11 @@ make_strict_inc <- function(x) {
 ################################################################################
 #' @importFrom DescTools CCC KendallW
 #' @importFrom diptest dip.test
-#' @importFrom energy dcor
+#' @importFrom dccpp dcor
 #' @importFrom entropy entropy discretize
 #' @importFrom moments skewness kurtosis jarque.test
 #' @importFrom nortest ad.test
+#' @importFrom pcaPP cor.fk
 #' @importFrom stats cov
 
 features <- function(x) {
@@ -189,7 +190,7 @@ features <- function(x) {
     # Correlations
     pearson  <- cor(X, Y, method = "pearson")
     spearman <- cor(X, Y, method = "spearman")
-    kendall  <- cor(X, Y, method = "kendall")
+    kendall  <- cor.fk(X, Y) # faster than cor(X, Y, method = "kendall")
 
     # Covariance matrix + determinant (generalized variance)
     covmat <- cov(cbind(X, Y))
@@ -202,7 +203,7 @@ features <- function(x) {
     eccen      <- sqrt(eig$values[1] / eig$values[2])  # eccentricity of ellipse
 
     # Distance correlation (nonlinear dependence)
-    dcor_val <- dcor(X, Y)
+    dcor_val <- dcor(X,Y) # faster than dcor(X, Y)
 
     # Concordance measures
     concord_Lin <- CCC(X,Y)$rho.c[[1]]
@@ -268,7 +269,13 @@ choose_params <- function(X, type) {
       }
       bw <- as.character(predict(tree, newdata = feat_X, type = "class"))
 
-      min.intknots <- min_intknots_univ(X, alpha, method = bw)
+      if (feat_X$dip_pval_cat == ">.1") {
+        if (N ==100) k_cap = 12 else k_cap = 30
+        } else {
+          k_cap = 35
+        }
+
+      min.intknots <- min_intknots_univ(X, alpha, method = bw, k_cap = k_cap)
 
     } else if (startsWith(type, "default")) {
       # min.intknots
@@ -352,7 +359,7 @@ choose_params <- function(X, type) {
 
     type <- "top_mean_Q3"
 
-    N <- length(X)
+    N <- NROW(X)
     feat_X <- features(X)
 
     ## 1) min.intknots, min(k-q)
@@ -403,7 +410,7 @@ choose_params <- function(X, type) {
       }
     }
     phi_F <- predict(Gmodboost, feat_X, n = 4)
-    phi_F <- max(min(phi_F, 1 - 1e-8), 1e-8) # make sure it is in (0,1)
+    phi_F <- max(min(phi_F, 0.995), 0.1)  # ensure 0.1 <= phi_F <= 0.995
 
     ## 3) beta
     if (N < int1) {
@@ -434,7 +441,8 @@ trim_tails <- function(v, p) {
 #' @importFrom stats bw.nrd0 bw.nrd bw.ucv bw.bcv bw.SJ
 #' @importFrom moments kurtosis
 min_intknots_univ <- function(X, alpha,
-                              method = c("bw.nrd0", "bw.nrd", "bw.ucv", "bw.bcv", "bw.SJ")) {
+                              method = c("bw.nrd0", "bw.nrd", "bw.ucv", "bw.bcv", "bw.SJ"),
+                              k_cap = 35) {
 
   stopifnot(is.vector(X))
   method <- match.arg(as.character(method),
@@ -454,7 +462,6 @@ min_intknots_univ <- function(X, alpha,
   c <- kurtosis(X_trimmed)
 
   k_raw <- k * (1/c)
-  k_cap <- 35
 
   k_min <- round(min(k_raw, k_cap))
   k_min <- max(1L, k_min)   # at least 1 internal knots

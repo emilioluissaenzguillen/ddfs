@@ -13,7 +13,7 @@
 UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
                                     max_iterations = 50L, max.intknots = 1,
                                     beta = 0, phi_F_X = 0.3, q_F_X = 1, stoptype = "RDMD",
-                                    enforce_tail_decay = TRUE,
+                                    tail_decay = c("auto", "none", "left", "right", "both"),
                                     plot = FALSE, resids_plot = FALSE, pdf = NULL, cdf = NULL,
                                     stop_plotting = 0, schoenberg = FALSE)
 {
@@ -36,15 +36,15 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
 
   out <- list(
     f_X_hat = f_X_hat,
-    F_X_hat = F_X_hat, Type = "Univ - DDFS",
-    Args = list(X = X, ecdf = F_X, phi = phi_F_X, q = q_F_X, beta = beta),
+    F_X_hat = F_X_hat, type = "Univ - DDFS",
+    args = list(X = X, ecdf = F_X, phi = phi_F_X, q = q_F_X, beta = beta),
     RSS = list(mindist = NULL, GeDS = NULL),
     model = NULL
   )
 
-  if (enforce_tail_decay) {
+  tail_decay <- match.arg(tail_decay)
 
-
+  if (tail_decay == "auto"){
     # # Option 1
     # t_function <- function(N) log(N)/N
     #
@@ -123,14 +123,22 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
     # left_decreasingtail <- count_lower < threshold
     # right_decreasingtail <- count_upper < threshold
 
-    # left_decreasingtail <- FALSE; right_decreasingtail <- FALSE
+    # left_decreasingtail <- TRUE; right_decreasingtail <- TRUE
 
     # print(paste0("left_decreasingtail=", left_decreasingtail, " right_decreasingtail=", right_decreasingtail))
 
-  } else {
-    left_decreasingtail <-  right_decreasingtail <- FALSE
-
+  } else if (tail_decay == "both") {
+    left_decreasingtail <- right_decreasingtail <- TRUE
+  } else if (tail_decay == "none") {
+    left_decreasingtail <- right_decreasingtail <- FALSE
+  } else if (tail_decay == "left") {
+    left_decreasingtail <- TRUE; right_decreasingtail <- FALSE
+  } else if (tail_decay == "right") {
+    left_decreasingtail <- FALSE; right_decreasingtail <- TRUE
   }
+
+
+
 
   # Iterate
   for (iter in 1:max_iterations) {
@@ -318,16 +326,25 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
     ################
     if (plot) {
       out$f_X_hat <- f_X_hat_list[[iter]]
-      plot.ddfs(out, type = "density", f = pdf)
+      plot.ddfs(out, fit = "pdf", f = pdf)
     }
 
     # 4) Based on the latter estimated density, we obtain a corresponding estimate of the CDF
-    # c.f. De Boor, 2001, Chapter X, formula (33)
+    # c.f. De Boor, 2001, Chapter X, formula (33); the integral of a spline of degree n is a spline of degree n + 1
+
     # F_X_hat <- Integrate(knots = knt, coef = theta, from = knt[1], to = X, n = n)
     # F_X_hat_ibs <- ibs::ibs(X, knt, ord = n, coef = theta)
-    F_X_hat <- ibs(x = X, degree = n - 1,
-                   knots = InterKnots, Boundary.knots = extr,
-                   coef = theta, intercept = TRUE) %*% theta
+    # F_X_hat <- ibs(x = X, degree = n - 1,
+    #                knots = InterKnots, Boundary.knots = extr,
+    #                coef = theta, intercept = TRUE) %*% theta
+
+    basisMatrix_F_X_hat <- splineDesign(knots = sort(c(InterKnots,rep(extr,n+1))),
+                                        x = X, ord = n+1, derivs = rep(0,length(X)),
+                                        outer.ok = T)
+    theta_prime <- theta_prime_func(theta, sort(c(InterKnots,rep(extr,n))), n)
+    # coef_F_X <- cdf_coef(basisMatrix_F_X_hat, F_X_hat)
+    # print(round(as.numeric(theta_prime - coef_F_X),5))
+    F_X_hat <- basisMatrix_F_X_hat%*% theta_prime
 
     resid_X <- F_X - F_X_hat
     RSS[iter] <- sum(resid_X^2)
@@ -336,41 +353,18 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
       RSS_GeDS[iter] <- Gmod$linear.fit$rss
     }
 
-    ## Get F_X coefficients
-    # The integral of a spline of degree n is a spline of degree n + 1
-    basisMatrix_F_X_hat <- splineDesign(knots = sort(c(InterKnots,rep(extr,n+1))),
-                                        x = X, ord = n+1, derivs = rep(0,length(X)),
-                                        outer.ok = T)
-    # matcb <- crossprod(basisMatrix_F_X_hat)
-    # matcbinv <- tryCatch({
-    #   chol2inv(chol(matcb))  # Fastest if SPD
-    # }, error = function(e1) {
-    #   message("Matrix not SPD, using solve().")
-    #   tryCatch({
-    #     solve(matcb)
-    #   }, error = function(e2) {
-    #     message("Matrix singular, using ginv().")
-    #     MASS::ginv(matcb)
-    #   })
-    # })
-    # coef_F_X <- as.numeric(matcbinv %*% t(basisMatrix_F_X_hat) %*% F_X_hat)
-    capture.output(
-      coef_F_X <- cdf_coef(basisMatrix_F_X_hat, F_X_hat)$coef
-    )
-
-
-    # print(as.numeric(round(F_X_hat - basisMatrix_F_X_hat %*% coef_F_X,4)))
+    # print(as.numeric(round(F_X_hat - basisMatrix_F_X_hat%*% theta_prime,4)))
 
     # Save the current F_X_hat_list
     F_X_hat_list[[iter]] <- list(pred = F_X_hat, knots = sort(c(InterKnots,rep(extr,n+1))),
-                                 coef = coef_F_X, order = n+1)
+                                 coef = theta_prime, order = n+1)
 
     #################
     # Integral plot #
     #################
     if(plot) {
       out$F_X_hat <- F_X_hat_list[[iter]]
-      plot.ddfs(out, type = "distribution", f = cdf)
+      plot.ddfs(out, fit = "cdf", f = cdf)
     }
 
     ###################

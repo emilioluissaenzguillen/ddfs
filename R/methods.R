@@ -9,7 +9,7 @@
 #' object.
 #' @param object the  \code{\link{ddfs}} object from which the
 #' coefficients of the selected pdf/cdf should be extracted.
-#' @param type Character string, either `"pdf"` or `"cdf"`, indicating which
+#' @param fit Character string, either `"pdf"` or `"cdf"`, indicating which
 #' coefficient vector to return; cdf coefficients are computed as weighted sums
 #' of the pdf coefficients, where the weights depend on the knot locations.
 #' @param ... Potentially further arguments (required by the definition of the
@@ -29,22 +29,22 @@
 #' @aliases coef.ddfs
 #' @rdname coef
 
-coef.ddfs <- function(object, type = c("pdf", "cdf"), ...)
+coef.ddfs <- function(object, fit = c("pdf", "cdf"), ...)
 {
 
   # Handle additional arguments
-  if(!missing(...)) warning("Only 'object', 'type' arguments will be considered")
+  if(!missing(...)) warning("Only 'object', 'fit' arguments will be considered")
 
-  type <- match.arg(type)
+  fit <- match.arg(fit)
 
-  # map object$Type → dimension suffix
-  suffix <- switch(object$Type,
+  # map object$type → dimension suffix
+  suffix <- switch(object$type,
                    "Univ - DDFS" = "_X_hat",
                    "Biv - DDFS"  = "_XY_hat",
-                   stop("Unknown object$Type: ", object$Type))
+                   stop("Unknown object$type: ", object$type))
 
   # prefix f vs F
-  prefix <- if (type == "pdf") "f" else "F"
+  prefix <- if (fit == "pdf") "f" else "F"
 
   # e.g. "f_X_hat" or "F_XY_hat"
   slot_name <- paste0(prefix, suffix)
@@ -52,6 +52,51 @@ coef.ddfs <- function(object, type = c("pdf", "cdf"), ...)
   # extract and return the coef
   return(object[[slot_name]]$coef)
 }
+
+################################################################################
+#################################### DERIVE ####################################
+################################################################################
+#' @title Derivative of ddfs Objects
+#' @name Derive
+#' @description
+#' This function computes derivatives of a fitted ddfs model.
+#' @param object An object of class \code{"ddfs"} containing the ddfs univariate
+#' fit which should be differentiated.
+#' @param x Numeric vector containing values of the independent variable at
+#' which the derivatives of order \code{order} should be computed.
+#' @param order Integer value indicating the order of differentiation required
+#' (e.g. first, second or higher derivatives). Note that \code{order} should be
+#' lower than \code{n} and that non-integer values will be passed to the
+#' function \code{\link{as.integer}}.
+#' @param fit Character string, either `"pdf"` or `"cdf"`
+#' @export
+#'
+#' @aliases derive.ddfs
+#' @rdname derive
+derive.ddfs <- function(object, x, order = 1L, fit = "pdf")
+{
+  if (!inherits(object, "ddfs")) stop("incorrect object class")
+  if (!(object$type %in% c("Univ - DDFS"))) stop("Implemented only for the univariate case")
+  if (fit == "pdf") {
+    n <- object$f_X_hat$order
+  } else if (fit == "cdf") {
+    n <- object$F_X_hat$order
+  }
+
+  x <- as.numeric(x)
+  l <- length(x)
+  if (order >= n) stop("'order' must be less than 'n'")
+  if (length(n)!=1) stop("'n' must have length 1")
+  n <- as.integer(n)
+  if (length(order)!=1) stop("'order' must have length 1")
+  order <- as.integer(order)
+  kn <- knots(object, options = "all", fit = fit)
+  thetas <- coef(object, fit = fit)
+  basis <- splineDesign(knots = kn, x = x, ord = n, derivs = rep(order,l), outer.ok = TRUE)
+  der <- as.numeric(basis%*%thetas)
+  der
+}
+
 
 ################################################################################
 #################################### PREDICT ###################################
@@ -110,7 +155,7 @@ d.ddfs <- function(object, x) {
   if (!inherits(object, "ddfs")) {
     stop("The 'object' must be of class 'ddfs'.")
   }
-  predict.ddfs(object, newdata = x, type = "density")
+  predict.ddfs(object, newdata = x, fit = "pdf")
 }
 
 #' @rdname ddfs_distribution_methods
@@ -120,7 +165,7 @@ p.ddfs <- function(object, q) {
   if (!inherits(object, "ddfs")) {
     stop("The 'object' must be of class 'ddfs'.")
   }
-  predict.ddfs(object, newdata = q, type = "distribution")
+  predict.ddfs(object, newdata = q, fit = "cdf")
 }
 
 #' @rdname ddfs_distribution_methods
@@ -131,10 +176,10 @@ q.ddfs <- function(object, p) {
     stop("The 'object' must be of class 'ddfs'.")
   }
 
-  if(object$Type != "Univ - DDFS") {
+  if(object$type != "Univ - DDFS") {
     stop("Quantile prediction is only available for univariate ddfs fits.")
   }
-  predict.ddfs(object, newdata = p, type = "quantile")
+  predict.ddfs(object, newdata = p, fit = "qf")
 }
 
 #' @rdname ddfs_distribution_methods
@@ -151,13 +196,13 @@ r.ddfs <- function(object, N) {
 #' @keywords internal
 #' @importFrom splines polySpline splineDesign
 #' @noRd
-predict.ddfs <- function(object, newdata, type = "density",...)
+predict.ddfs <- function(object, newdata, fit = "pdf",...)
   {
 
   ####################################################
   ################ UNIVARIATE DENSITY ################
   ####################################################
-  if (object$Type == "Univ - DDFS") {
+  if (object$type == "Univ - DDFS") {
 
     if (!missing(newdata)) {
       if (NCOL(newdata) != 1L) {
@@ -168,7 +213,7 @@ predict.ddfs <- function(object, newdata, type = "density",...)
 
     }
 
-    if (type == "density") {
+    if (fit == "pdf") {
       if (missing(newdata)) return(as.numeric(object$f_X_hat$pred))
       object <- object$f_X_hat
       theta <- object$coef
@@ -179,7 +224,7 @@ predict.ddfs <- function(object, newdata, type = "density",...)
                                   ord = n, outer.ok = T)
       pred <- basisMatrix %*% theta
 
-    } else if (type == "distribution") {
+    } else if (fit == "cdf") {
       if (missing(newdata)) return(as.numeric(object$F_X_hat$pred))
       object <- object$F_X_hat
       theta <- object$coef
@@ -193,7 +238,7 @@ predict.ddfs <- function(object, newdata, type = "density",...)
       pred[X_new <= min(object$knots)] <- 0
       pred[X_new >= max(object$knots)] <- 1
 
-    } else if (type == "quantile") {
+    } else if (fit == "qf") {
       if (missing(newdata)) X_new <- as.numeric(object$F_X_hat$pred)
       # Check
       eps <- 1e-8
@@ -216,14 +261,14 @@ predict.ddfs <- function(object, newdata, type = "density",...)
       ppoly <- polySpline(newlist)
 
       # (ii) Invert polynomial
-      pred <- PPolyInv(ppoly, X_new)
+      pred <- PPolyInv(ppoly, round(X_new,6)) # with too many decimals sometimes becomes unstable
 
     }
 
     ####################################################
     ################ BIVARIATE DENSITY #################
     ####################################################
-  } else if (object$Type == "Biv - DDFS") {
+  } else if (object$type == "Biv - DDFS") {
 
     if (NCOL(newdata) != 2L) {
       stop("'newdata' must contain two variables for bivariate DDFS fits.")
@@ -233,7 +278,7 @@ predict.ddfs <- function(object, newdata, type = "density",...)
     Xextr <- range(XY_new[,1])
     Yextr <- range(XY_new[,2])
 
-    if (type == "density") {
+    if (fit == "pdf") {
       if (missing(newdata)) return(as.numeric(object$f_XY_hat$pred))
       object <- object$f_XY_hat
       theta <- object$coef
@@ -264,7 +309,7 @@ predict.ddfs <- function(object, newdata, type = "density",...)
       pred[out_of_bounds_X_low | out_of_bounds_Y_low] <- 0
       pred[out_of_bounds_X_high | out_of_bounds_Y_high] <- 0
 
-    } else if (type == "distribution") {
+    } else if (fit == "cdf") {
       if (missing(newdata)) return(as.numeric(object$F_XY_hat$pred))
       object <- object$F_XY_hat
       theta <- object$coef
@@ -320,7 +365,7 @@ predict.ddfs <- function(object, newdata, type = "density",...)
 #' user to extract the vector of knots of a ddfs fit.
 #' @param Fn the \code{\link{ddfs}} object from which the vector of knots
 #' of the pdf or cdf spline model should be extracted.
-#' @param type Character string, either `"pdf"` or `"cdf"`, indicating which knots
+#' @param fit Character string, either `"pdf"` or `"cdf"`, indicating which knots
 #' to return. Knots are identical except that the cdf, being one degree higher,
 #' repeats the boundary knots once more. When `options = "internal"`, the two
 #' sets of knots coincide exactly.
@@ -346,21 +391,21 @@ predict.ddfs <- function(object, newdata, type = "density",...)
 #' @aliases knots.ddfs
 #' @rdname knots
 
-knots.ddfs <- function(Fn, type = c("pdf", "cdf"), options = c("all","internal"), ...) {
+knots.ddfs <- function(Fn, fit = c("pdf", "cdf"), options = c("all","internal"), ...) {
 
   # Handle additional arguments
   if(!missing(...)) warning("Arguments other than 'Fn', 'type' and 'options' currenly igored. \n Please check if the input parameters have been correctly specified.")
 
   # validate args
-  type    <- match.arg(type)
+  fit    <- match.arg(fit)
   options <- match.arg(options)
 
   # build slot name: prefix f/F and suffix _X_hat/_XY_hat
-  prefix <- if (type == "pdf") "f" else "F"
-  suffix <- switch(Fn$Type,
+  prefix <- if (fit == "pdf") "f" else "F"
+  suffix <- switch(Fn$type,
                    "Univ - DDFS" = "_X_hat",
                    "Biv - DDFS" = "_XY_hat",
-                   stop("Unknown Fn$Type: ", Fn$Type))
+                   stop("Unknown Fn$type: ", Fn$type))
   slot_name <- paste0(prefix, suffix)
 
   # extract knots
@@ -393,8 +438,8 @@ knots.ddfs <- function(Fn, type = c("pdf", "cdf"), options = c("all","internal")
 #' values), these values will be used to display a reference curve/dots on the plot.
 #' @param legend.pos the position of the legend within the panel. See
 #' \link[graphics]{legend} for details.
-#' @param type character string specifying the type of plot required. Should be
-#' set either to \code{"density"} or  \code{"distribution"}.
+#' @param fit character string specifying the type of plot required. Should be
+#' set either to \code{"pdf"} or  \code{"cdf"}.
 #' @param ... further arguments to be passed to the
 #' \code{\link[graphics]{plot.default}} function.
 #' @importFrom graphics plot points lines legend mtext abline
@@ -403,7 +448,7 @@ knots.ddfs <- function(Fn, type = c("pdf", "cdf"), options = c("all","internal")
 #' @method plot ddfs
 
 plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
-                      type = "density", ...)
+                      fit = c("pdf", "cdf"), ...)
   {
 
   # # Check if x is of class "ddfs"
@@ -411,10 +456,12 @@ plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
   #   stop("The input 'x' must be of class 'ddfs'")
   # }
 
+  fit <- match.arg(fit)
+
   # Other arguments passed to the function
   others <- list(...)
 
-  if (x$Type == "Univ - DDFS") {
+  if (x$type == "Univ - DDFS") {
     X_new <- seq(min(x$f_X_hat$knots), max(x$f_X_hat$knots), diff(range(x$f_X_hat$knots))/1000)
 
     if(!is.null(f)) {
@@ -425,8 +472,8 @@ plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
       }
     } else f_values <- NULL
 
-    if (type == "density") {
-      pred <- predict.ddfs(x, newdata = X_new, type = "density")
+    if (fit == "pdf") {
+      pred <- predict.ddfs(x, newdata = X_new, fit = "pdf")
       ylab <- expression(f[X])
       if(!is.null(f)) {
         legend.text <- c(bquote(f(x)),
@@ -447,8 +494,8 @@ plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
         ""
       }
 
-      } else if (type == "distribution") {
-        pred <- predict.ddfs(x, newdata = X_new, type = "distribution")
+      } else if (fit == "cdf") {
+        pred <- predict.ddfs(x, newdata = X_new, fit = "cdf")
         ylab <- expression(F[X])
         if(!is.null(f)) {
           legend.text <- c(bquote(F[N](x)),
@@ -473,9 +520,13 @@ plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
 
     yylim <- range(c(pred, f_values))
     ylim <- if (!is.null(others$ylim)) others$ylim else yylim
+    xxlim <- range(X_new)
+    xlim <- if (!is.null(others$xlim)) others$xlim else xxlim
+
     plot(X_new, pred, type = "n", col = "red", lwd = 2,
-         ylab = ylab, xlab = "", main = main, ylim = ylim, cex.lab = 1.2)
-    if (type == "distribution") points(x$Args$X, x$Args$ecdf, col = "darkgrey")
+         ylab = ylab, xlab = "", main = main,
+         xlim = xlim, ylim = ylim, cex.lab = 1.2)
+    if (fit == "cdf") points(x$args$X, x$args$ecdf, col = "darkgrey")
     lines(X_new, pred, col = "red", lwd = 2)
     if (!is.null(f)) lines(X_new, f_values, col = "black", lwd = 2)
 
@@ -493,17 +544,17 @@ plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
       knt_text1 <- paste0(paste(knt_text_split[1:mid], collapse = ", "), ",")
       knt_text2 <- paste(knt_text_split[(mid + 1):length(knt_text_split)], collapse = ", ")
 
-      knots_text1 <- if (type == "density") {
+      knots_text1 <- if (fit == "pdf") {
         bquote(italic(bold(t)[k * "," * n]) == italic(.(paste0("{", knt_text1))))
-      } else if (type == "distribution") {
+      } else if (fit == "cdf") {
         bquote(italic(bold(t)[k * "," * n+1]) == italic(.(paste0("{", knt_text1))))
       }
 
       knots_text2 <- bquote(italic(.(paste0(knt_text2, "}"))))
     } else {
-      knots_text1 <- if (type == "density") {
+      knots_text1 <- if (fit == "pdf") {
         bquote(italic(bold(t)[k * "," * n]) == italic(.(paste0("{", knt_text,"}"))))
-      } else if (type == "distribution") {
+      } else if (fit == "cdf") {
         bquote(italic(bold(t)[k * "," * n+1]) == italic(.(paste0("{", knt_text,"}"))))
       }
       knots_text2 <- ""
@@ -526,13 +577,13 @@ plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
     }
 
 
-  } else if (x$Type == "Biv - DDFS") {
+  } else if (x$type == "Biv - DDFS") {
 
-    N <- nrow(x$Args$XY)
-    X <- x$Args$XY[,1]; Y <- x$Args$XY[,2]; ecdf <- x$Args$ecdf
+    N <- nrow(x$args$XY)
+    X <- x$args$XY[,1]; Y <- x$args$XY[,2]; ecdf <- x$args$ecdf
 
     if (!is.null(f) && is.function(f)) {
-      f_values <- f(x$Args$XY)
+      f_values <- f(x$args$XY)
     } else {
       f_values <- f
     }
@@ -541,9 +592,9 @@ plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
     Y_new <- seq(from = min(Y), to = max(Y), length.out = 2*round(sqrt(N)))
     grid_matrix <- expand.grid(X = X_new, Y = Y_new)
 
-    if (type == "density") {
+    if (fit == "pdf") {
 
-      f_XY_hat_val <- predict.ddfs(x, newdata = grid_matrix, type = "density")
+      f_XY_hat_val <- predict.ddfs(x, newdata = grid_matrix, fit = "pdf")
       f_XY_hat_mat <- matrix(f_XY_hat_val, nrow = 2*round(sqrt(N)))
 
       persp3D(x = X_new , y = Y_new, z = f_XY_hat_mat, phi = 25, theta = 50,
@@ -579,10 +630,10 @@ plot.ddfs <- function(x, f = NULL, main = NULL, legend.pos = NULL,
                cex = 1)
       }
 
-    } else if (type == "distribution") {
+    } else if (fit == "cdf") {
 
 
-      F_XY_hat_val <- predict.ddfs(x, newdata = grid_matrix, type = "distribution")
+      F_XY_hat_val <- predict.ddfs(x, newdata = grid_matrix, fit = "cdf")
       F_XY_hat_mat <- matrix(F_XY_hat_val, nrow = 2*round(sqrt(N)))
 
       persp3D(x = X_new , y = Y_new, z = F_XY_hat_mat, phi = 25, theta = 50,
@@ -696,12 +747,12 @@ print.ddfs <- function(x,
                        ...) {
 
 
-  suffix <- switch(x$Type,
+  suffix <- switch(x$type,
                    "Univ - DDFS" = "_X_hat",
                    "Biv - DDFS" = "_XY_hat",
-                   stop("Unknown x$Type: ", x$Type))
+                   stop("Unknown x$type: ", x$type))
 
-  cat(paste0("\n", x$Type, ":\n"))
+  cat(paste0("\n", x$type, ":\n"))
 
   ## Fucntion call
   cat("\nCall:\n", paste(deparse(x$extcall), sep = "\n", collapse = "\n"),
@@ -731,7 +782,7 @@ print.ddfs <- function(x,
 ################################################################################
 ################################## ROUGHNESS ###################################
 ################################################################################
-roughness_numeric <- function(x, f_hat, trim = 0.005) {
+roughness_numeric <- function(x, f_hat, trim = 0) {
 
 
   if (trim != 0) {
@@ -819,7 +870,7 @@ VaR.ddfs <- function(object, alpha, ...) {
   if (missing(alpha)) {
     stop("Confidence level 'alpha' must be provided.")
   }
-  return(as.numeric(predict.ddfs(object, newdata = alpha, type = "quantile")))
+  return(as.numeric(predict.ddfs(object, newdata = alpha, fit = "qf")))
 }
 
 
@@ -1023,7 +1074,8 @@ lhs_integral <- function(i, n, knots, x) {
 
 }
 
-# 2) Right-hand side based on Bhatti–Bracken Proposition 1
+# 2) Right-hand side based on Bhatti–Bracken Proposition 1,
+# "Integrating by parts once for the case in which p = 1 leads to the expression:"
 #' @importFrom splines splineDesign
 rhs_formula <- function(i, n, t, x) {
 
@@ -1047,6 +1099,7 @@ rhs_formula <- function(i, n, t, x) {
   return( ((t[i+n] - t[i])/n) * (term1 - term2) )
 }
 
+# See (6) in Bhatti–Bracken (2006)
 #' @importFrom splines splineDesign
 I_0i <- function(i, n, t, x){
   i <- i + 1
@@ -1074,12 +1127,12 @@ I_0i_num <- function(i, n, t, x){
 
 # # Alternatively
 # quantile_function <- function(p, cdf_spline) {
-#   uniroot(function(x) predict.ddfs(GmodDens, newdata = x, type = "distribution") - p, interval = range(GmodDens$Args$X))$root
+#   uniroot(function(x) predict.ddfs(GmodDens, newdata = x, fit = "cdf") - p, interval = range(GmodDens$args$X))$root
 # }
 #
 # # Example usage
 # alpha = 0.95
-# predict.ddfs(GmodDens, newdata = alpha, type = "quantile")
+# predict.ddfs(GmodDens, newdata = alpha, fit = "qf")
 # quantile_function(alpha, GmodDens)
 # quantile(X, alpha)
 
@@ -1109,14 +1162,14 @@ summary.ddfs <- function(object, ...)
   print.ddfs(object, ...)
 
   # 2)
-  cat("phi = ", object$Args$phi, "and q = ", object$Args$q, "(stopping rule parameters);\n")
-  cat("beta = ", object$Args$beta)
+  cat("phi = ", object$args$phi, "and q = ", object$args$q, "(stopping rule parameters);\n")
+  cat("beta = ", object$args$beta)
 
-  if (object$Args$beta == 0.5) {
+  if (object$args$beta == 0.5) {
     cat(", meaning that the within-cluster mean residual and the cluster range were considered equally important when placing the knots.\n")
-  } else if (object$Args$beta > 0.5) {
+  } else if (object$args$beta > 0.5) {
     cat(", meaning that more weight was given to the within-cluster mean residual than to the cluster range when placing the knots.\n")
-  } else if (object$Args$beta < 0.5) {
+  } else if (object$args$beta < 0.5) {
     cat(", meaning that more weight was given to the cluster range than to the within-cluster mean residual when placing the knots.\n")
   }
 

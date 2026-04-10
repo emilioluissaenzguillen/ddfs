@@ -5,13 +5,13 @@
 \alias{knots.ddfs}
 \title{Knots method for GeDS, GeDSboost, GeDSgam}
 \usage{
-\method{knots}{ddfs}(Fn, type = c("pdf", "cdf"), options = c("all", "internal"), ...)
+\method{knots}{ddfs}(Fn, fit = c("pdf", "cdf"), options = c("all", "internal"), ...)
 }
 \arguments{
 \item{Fn}{the \code{\link{ddfs}} object from which the vector of knots
 of the pdf or cdf spline model should be extracted.}
 
-\item{type}{Character string, either `"pdf"` or `"cdf"`, indicating which knots
+\item{fit}{Character string, either `"pdf"` or `"cdf"`, indicating which knots
 to return. Knots are identical except that the cdf, being one degree higher,
 repeats the boundary knots once more. When `options = "internal"`, the two
 sets of knots coincide exactly.}

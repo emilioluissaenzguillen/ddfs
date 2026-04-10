@@ -13,8 +13,8 @@ ddfs(
   phi_F = NULL,
   q_F = NULL,
   stoptype = "RDMD",
+  tail_decay = c("auto", "none", "left", "right", "both"),
   tails_count_threshold = 0.05,
-  enforce_tail_decay = TRUE,
   plot = FALSE,
   pdf = NULL,
   cdf = NULL,
@@ -53,13 +53,17 @@ fitting procedure. The default is \code{1L}.}
 to be used. It should be either one of \code{"RDMD"}, \code{"SRMD"}, \code{"RD"}
 or \code{"SR"}. See details.}
 
-\item{tails_count_threshold}{Parameter controlling the required data concentration
-in the tails in order to omit the additional constraints \eqn{\theta_1 = 0} and
-\eqn{\theta_p = 0} in the maximum likelihood estimation of the spline coefficients.}
+\item{tail_decay}{Character string controlling whether tail-decay constraints
+are imposed in the univariate fit. Use \code{"auto"} to choose the constrained
+tail(s) by a histogram-based rule, \code{"none"} to disable the constraints,
+\code{"left"} or \code{"right"} to constrain only one tail, or \code{"both"}
+to constrain both tails.}
 
-\item{enforce_tail_decay}{Logical; if \code{TRUE} \eqn{\theta_1 = 0} and
-\eqn{\theta_p = 0} is imposed in the maximum likelihood estimation of the
-spline coefficients.}
+\item{tails_count_threshold}{Numeric threshold used only for bivariate fits.
+For each margin, the algorithm computes the proportion of observations falling
+in the lower and upper 5% of the observed range. If that proportion is below
+this threshold, the corresponding tail is treated as decreasing and the
+associated boundary constraint is imposed. Ignored for univariate fits.}
 
 \item{plot}{Logical indicating whether to plot or not the pdf/cdf fits at
 each iteration. Default is \code{FALSE}.}
@@ -168,8 +172,8 @@ ddfs_fit <- ddfs(X, n = 4, phi_F = 0.3, q_F = 1, plot = TRUE,
 
 print(ddfs_fit)
 summary(ddfs_fit)
-coef(ddfs_fit, type = "pdf")
-coef(ddfs_fit, type = "cdf")
+coef(ddfs_fit, fit = "pdf")
+coef(ddfs_fit, fit = "cdf")
 knots(ddfs_fit, options = "internal")
 
 \dontrun{
@@ -188,8 +192,8 @@ ddfs_fit <- ddfs(data = XY, n = 4, min.intknots = 9, phi_F = 0.4, q_F = 2, beta 
 
 print(ddfs_fit)
 summary(ddfs_fit)
-coef(ddfs_fit, type = "pdf")
-coef(ddfs_fit, type = "cdf")
+coef(ddfs_fit, fit = "pdf")
+coef(ddfs_fit, fit = "cdf")
 knots(ddfs_fit, options = "internal")
 }
 

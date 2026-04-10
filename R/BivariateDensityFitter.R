@@ -32,8 +32,8 @@ BivariateDensityFitter <- function(XY, n = 3L, min_iterations = 1,
 
   out <- list(
     f_XY_hat = f_XY_hat,
-    F_XY_hat = F_XY_hat, Type = "Biv - DDFS",
-    Args = list(XY = XY, ecdf = F_XY, phi = phi_F_XY, q = q_F_XY, beta = beta),
+    F_XY_hat = F_XY_hat, type = "Biv - DDFS",
+    args = list(XY = XY, ecdf = F_XY, phi = phi_F_XY, q = q_F_XY, beta = beta),
     model = NULL
     )
 
@@ -195,55 +195,68 @@ BivariateDensityFitter <- function(XY, n = 3L, min_iterations = 1,
     if(plot) {
       out$f_XY_hat <- f_XY_hat_list[[iter]]
       par(mai = c(0.42, 0, 0.52, 0)) # bottom, left, top, right
-      plot.ddfs(out, type = "density", f = pdf)
+      plot.ddfs(out, fit = "pdf", f = pdf)
       par(mai = c(1.02, 0.82, 0.82, 0.42))
     }
 
     # 4) Based on the latter estimated density, we obtain a corresponding estimate of the CDF
     # c.f. Dierckx (1993), Chapter 2, formula (20)
-    # Define BivariateSpline object
-    F_XY_hat <- compute_bivariate_integral(X = X, Y = Y, kntX = kntX, kntY = kntY,
-                                               theta = theta, n = n)
+    # The integral of a spline of degree n is a spline of degree n + 1
+    basisMatrix_F_XY_hatX <- splineDesign(knots = sort(c(InterKnotsX,rep(Xextr,n+1))),
+                                          x = X, ord = n+1, derivs = rep(0,length(X)),
+                                          outer.ok = T)
+    basisMatrix_F_XY_hatY <- splineDesign(knots = sort(c(InterKnotsY,rep(Yextr,n+1))),
+                                          x = Y, ord = n+1, derivs = rep(0,length(Y)),
+                                          outer.ok = T)
+    basisMatrixbiv_F_XY_hat <- getFromNamespace("tensorProd", "GeDS")(basisMatrix_F_XY_hatX, basisMatrix_F_XY_hatY)
+    theta_prime <- theta_prime_bivariate_func(theta,
+                                              sort(c(InterKnotsX,rep(Xextr,n))),
+                                              sort(c(InterKnotsY,rep(Yextr,n))), n1 = n, n2 = n)
+
+    # F_XY_hat <- compute_bivariate_integral(X = X, Y = Y, kntX = kntX, kntY = kntY,
+    #                                            theta = theta, n = n)
+    F_XY_hat <- basisMatrixbiv_F_XY_hat %*% theta_prime
 
     resid_XY <- F_XY - F_XY_hat
     RSS[iter] <- sum(resid_XY^2)
 
-    # To calculate coefficients much better to use grid_data
-    F_XY_hat_grid <- compute_bivariate_integral(X = grid_data[,1], Y = grid_data[,2],
-                                                kntX = kntX, kntY = kntY, theta = theta, n = n)
-
-    # The integral of a spline of degree n is a spline of degree n + 1
-    basisMatrix_F_XY_hatX <- splineDesign(knots = sort(c(InterKnotsX,rep(Xextr,n+1))),
-                                          x = grid_data[,1], ord = n+1, derivs = rep(0,length(grid_data[,1])),
-                                          outer.ok = T)
-    basisMatrix_F_XY_hatY <- splineDesign(knots = sort(c(InterKnotsY,rep(Yextr,n+1))),
-                                          x = grid_data[,2], ord = n+1, derivs = rep(0,length(grid_data[,2])),
-                                          outer.ok = T)
-    basisMatrixbiv_F_XY_hat <- getFromNamespace("tensorProd", "GeDS")(basisMatrix_F_XY_hatX, basisMatrix_F_XY_hatY)
-
-    # Coefficients of F_XY_hat
-    matcb <- crossprod(basisMatrixbiv_F_XY_hat)
-    matcbinv <- tryCatch({
-      chol2inv(chol(matcb))  # Fastest if SPD
-    }, error = function(e1) {
-      message("Matrix not SPD, using solve().")
-      tryCatch({
-        solve(matcb)
-      }, error = function(e2) {
-        message("Matrix singular, using ginv().")
-        MASS::ginv(matcb)
-      })
-    })
+    # # To calculate coefficients much better to use grid_data
+    # basisMatrix_F_XY_hatX <- splineDesign(knots = sort(c(InterKnotsX,rep(Xextr,n+1))),
+    #                                       x = grid_data[,1], ord = n+1, derivs = rep(0,length(grid_data[,1])),
+    #                                       outer.ok = T)
+    # basisMatrix_F_XY_hatY <- splineDesign(knots = sort(c(InterKnotsY,rep(Yextr,n+1))),
+    #                                       x = grid_data[,2], ord = n+1, derivs = rep(0,length(grid_data[,1])),
+    #                                       outer.ok = T)
+    # basisMatrixbiv_F_XY_hat <- getFromNamespace("tensorProd", "GeDS")(basisMatrix_F_XY_hatX, basisMatrix_F_XY_hatY)
+    # F_XY_hat_grid <- compute_bivariate_integral(X = grid_data[,1], Y = grid_data[,2],
+    #                                             kntX = kntX, kntY = kntY, theta = theta, n = n)
+    # # Coefficients of F_XY_hat
+    # matcb <- crossprod(basisMatrixbiv_F_XY_hat)
+    # matcbinv <- tryCatch({
+    #   chol2inv(chol(matcb))  # Fastest if SPD
+    # }, error = function(e1) {
+    #   message("Matrix not SPD, using solve().")
+    #   tryCatch({
+    #     solve(matcb)
+    #   }, error = function(e2) {
+    #     message("Matrix singular, using ginv().")
+    #     MASS::ginv(matcb)
+    #   })
+    # })
+    # theta_prime <- matcbinv %*% t(basisMatrixbiv_F_XY_hat) %*% F_XY_hat_grid
 
     # Save the current F_XY_hat_list
     F_XY_hat_list[[iter]] <- list(pred = F_XY_hat,
                                   knots = list(Xk = sort(c(InterKnotsX,rep(Xextr,n+1))),
                                                Yk = sort(c(InterKnotsY,rep(Yextr,n+1)))),
-                                  coef = matcbinv %*% t(basisMatrixbiv_F_XY_hat) %*% F_XY_hat_grid,
+                                  coef = theta_prime,
                                   order = n+1)
 
-    # print(matrix(F_XY_hat_list[[iter]]$coef, nrow = p1+1, ncol = p2+1, byrow=FALSE))
-    # print(as.numeric(round(basisMatrixbiv_F_XY_hat %*% F_XY_hat_list[[iter]]$coef - F_XY_hat_grid, 4)))
+
+
+    # print(round(theta_prime - as.numeric(F_XY_hat_list[[iter]]$coef), 4))
+    # print(round(as.numeric(basisMatrixbiv_F_XY_hat %*% theta_prime - F_XY_hat_grid), 4))
+
 
     #################
     # Integral plot #
@@ -251,7 +264,7 @@ BivariateDensityFitter <- function(XY, n = 3L, min_iterations = 1,
     if(plot) {
       out$F_XY_hat <- F_XY_hat_list[[iter]]
       par(mai = c(0.42, 0, 0.52, 0)) # bottom, left, top, right
-      plot.ddfs(out, type = "distribution", f = cdf)
+      plot.ddfs(out, fit = "cdf", f = cdf)
       par(mai = c(1.02, 0.82, 0.82, 0.42))
     }
 

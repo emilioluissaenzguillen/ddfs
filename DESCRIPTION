@@ -31,10 +31,11 @@ License: GPL (>= 3)
 Depends:
   R (>= 4.4.0)
 Imports:
+    dccpp,
     DescTools,
     diptest,
-    energy,
     entropy,
+    extraDistr,
     extRemes,
     GeDS,
     graphics,
@@ -47,8 +48,10 @@ Imports:
     nloptr,
     nortest,
     numDeriv,
+    pcaPP,
     plot3D,
     Rcpp (>= 1.0.0),
+    ReIns,
     splines,
     splines2
 LinkingTo: Rcpp, RcppArmadillo

@@ -36,7 +36,7 @@
 #'   \item \code{"Bimodal"}: \eqn{\frac{1}{2}N(0, (1/10)^2) + \frac{1}{2}N(5, 1)}
 #'   \item \code{"Separated bimodal"}: \eqn{\frac{1}{2}N(-2, (1/2)^2) + \frac{1}{2}N(2, (1/2)^2)}
 #'   \item \code{"Skewed bimodal"}: \eqn{\frac{3}{4}N(0,1) + \frac{1}{4}N(3/2, (1/3)^2)}
-#'   \item \code{"MixGauss"}: \eqn{0.15N(-0.25,1/3) + 0.85N(3.25,1)}
+#'   \item \code{"MixGauss1"}: \eqn{0.15N(-0.25,1/3) + 0.85N(3.25,1)}
 #'   \item \code{"MixGauss2"}: \eqn{\frac{5}{6}N(3,1) + \frac{5}{36}N(8, (1/3)^2) + \frac{1}{36}N(10, (1/9)^2)}
 #'   \item \code{"MixGauss3"}: \eqn{0.3N(1, 0.5^2) + 0.2N(4.5, 1.2^2) + 0.5N(8, 0.8^2)}
 #'   \item \code{"Mix1d"}: \eqn{0.8\chi^2(3) + 0.2N(7,1)}
@@ -49,7 +49,7 @@
 #'   \item \code{"BivGauss_0.5"}: Bivariate standard normal distribution with correlation \eqn{\rho = 0.5}
 #'   \item \code{"BivGauss_0.8"}: Bivariate standard normal distribution with correlation \eqn{\rho = 0.8}
 #'
-#'   \item \code{"BivBiModGauss"}: Bivariate Gaussian mixture: \eqn{0.8 \cdot N(\mu_1, \Sigma_1) + 0.2 \cdot N(\mu_2, \Sigma_2)}, with
+#'   \item \code{"BivBiModGauss1"}: Bivariate Gaussian mixture: \eqn{0.8 \cdot N(\mu_1, \Sigma_1) + 0.2 \cdot N(\mu_2, \Sigma_2)}, with
 #'   \eqn{\mu_1 = (5.5, 5.5)}, \eqn{\Sigma_1 = \begin{pmatrix} 0.36 & 0.108 \\ 0.108 & 0.36 \end{pmatrix}},
 #'   \eqn{\mu_2 = (7, 7)}, and \eqn{\Sigma_2 = \begin{pmatrix} 0.16 & 0.048 \\ 0.048 & 0.16 \end{pmatrix}}
 #'
@@ -76,7 +76,7 @@
 #' "Log-normal", "Nakagami", "Kurtotic unimodal", "Outlier", "Skewed unimodal",
 #' "Strongly skewed", "Merton's jump diffusion", "Kou's double exponential",
 #' "GEV Type I", "GEV Type II", "GEV Type III",
-#' "MixGauss", "Mix1d", "MixGauss2",
+#' "MixGauss1", "Mix1d", "MixGauss2",
 #' "Bimodal", "Separated bimodal", "Skewed bimodal",
 #' "Trimodal", "Smooth comb", "Claw")
 #' par(mfrow = c(2,3))
@@ -100,9 +100,11 @@
 #' }
 #'
 #' @import stats
+#' @importFrom extraDistr dtnorm ptnorm rtnorm dpareto ppareto rpareto
 #' @importFrom extRemes devd pevd revd
 #' @importFrom mvtnorm dmvnorm pmvnorm rmvnorm
 #' @importFrom nakagami dnaka pnaka rnaka
+#' @importFrom ReIns dSplice pSplice rSplice
 #'
 #' @references
 #' Cui, Z., Kirkby, J. L., & Nguyen, D. (2020). Nonparametric density estimation by B-spline duality.
@@ -116,10 +118,11 @@ sim.dist <- function(N, ex) {
                   "Log-normal", "Nakagami", "Kurtotic unimodal", "Outlier", "Skewed unimodal",
                   "Strongly skewed", "Merton's jump diffusion", "Kou's double exponential",
                   "GEV Type I", "GEV Type II", "GEV Type III",
-                  "MixGauss", "Mix1d", "MixGauss2", "MixGauss3",
+                  "MixGauss1", "Mix1d", "MixGauss2", "MixGauss3",
                   "Bimodal", "Separated bimodal", "Skewed bimodal",
                   "Trimodal", "Smooth comb", "Claw",
-                  "BivGauss_0", "BivGauss_0.2", "BivGauss_0.5", "BivGauss_0.8", "BivBiModGauss",
+                  "Spliced1", "Spliced2",
+                  "BivGauss_0", "BivGauss_0.2", "BivGauss_0.5", "BivGauss_0.8", "BivBiModGauss1",
                   "BivGaussSkewed", "BivGaussKurtotic",
                   "BivBiModGauss2", "BivBiModGauss3", "BivBiModGauss4", "BivBiModGauss5",
                   "BivTriModGauss1", "BivTriModGauss2", "BivTriModGauss3",
@@ -287,7 +290,7 @@ sim.dist <- function(N, ex) {
   } else if (ex == "Kurtotic unimodal" || ex == "Skewed unimodal" ||
              ex == "Strongly skewed" || ex == "Outlier" || ex == "Smooth comb" ||
              ex == "Bimodal" || ex == "Separated bimodal" || ex == "Skewed bimodal" ||
-             ex == "Trimodal" || ex == "Claw" || ex == "MixGauss" || ex == "MixGauss2" ||
+             ex == "Trimodal" || ex == "Claw" || ex == "MixGauss1" || ex == "MixGauss2" ||
              ex == "MixGauss3") {
 
     # Parameters
@@ -361,7 +364,7 @@ sim.dist <- function(N, ex) {
       sigma <- c(1, rep(1/10, K) )
       p <- c(1/2, rep(1/10, K))
 
-    } else if (ex == "MixGauss") {
+    } else if (ex == "MixGauss1") {
       # 0.15N(−0.25, 1/3) + 0.85N(3.25, 1)
       mu <- c(-0.25, 3.25)
       sigma <- c(sqrt(1/3), sqrt(1))
@@ -452,6 +455,138 @@ sim.dist <- function(N, ex) {
     F_X_func <- function(x) p*pchisq(x, df = df) + (1-p)*pnorm(x, mu2, sigma2)
     F_X <- p*pchisq(X, df = df) + (1-p)*pnorm(X, mu2, sigma2)
 
+  } else if (ex == "Spliced1") {
+
+    prob_body <- 2/3
+    prob_tail <- 1/3
+
+    # Body: truncated Normal(1,4) on (0,9]
+    d_body <- function(x) extraDistr::dtnorm(x, mean = 1, sd = 4, a = 0, b = 9)
+    p_body <- function(x) extraDistr::ptnorm(x, mean = 1, sd = 4, a = 0, b = 9)
+    r_body <- function(n) extraDistr::rtnorm(n, mean = 1, sd = 4, a = 0, b = 9)
+
+    # Tail: truncated Pareto(2, 1/8) on (9, ∞)
+    alpha <- 2
+    xm    <- 1/8
+
+    # Normalizing constant for truncation at 9
+    F9 <- extraDistr::ppareto(9, a = alpha, b = xm)
+    S9 <- 1 - F9
+
+    d_tail <- function(x) {
+      extraDistr::dpareto(x, a = alpha, b = xm) / S9 * (x > 9)
+    }
+
+    p_tail <- function(x) {
+      p <- (extraDistr::ppareto(x, a = alpha, b = xm) - F9) / S9
+      p[x <= 9] <- 0
+      p
+    }
+
+    # Sampler for truncated Pareto via rejection
+    r_tail <- function(n) {
+      out <- numeric(0)
+      while (length(out) < n) {
+        y <- extraDistr::rpareto(n, a = alpha, b = xm)
+        out <- c(out, y[y > 9])
+      }
+      out[1:n]
+    }
+
+    ### ----------------------------------------------------------
+    ### Spliced PDF
+    ### ----------------------------------------------------------
+    f_X_func <- function(x) {
+      out <- numeric(length(x))
+
+      idx_body <- (x > 0 & x <= 9)
+      idx_tail <- (x > 9)
+
+      out[idx_body] <- prob_body * d_body(x[idx_body])
+      out[idx_tail] <- prob_tail * d_tail(x[idx_tail])
+
+      out
+    }
+
+    ### ----------------------------------------------------------
+    ### Spliced CDF
+    ### ----------------------------------------------------------
+    F_X_func <- function(x) {
+      out <- numeric(length(x))
+
+      idx_body <- (x > 0 & x <= 9)
+      idx_tail <- (x > 9)
+
+      ## CDF in body
+      out[idx_body] <- prob_body * p_body(x[idx_body])
+
+      ## CDF in tail = body mass + tail mass * truncated CDF
+      out[idx_tail] <- prob_body + prob_tail * p_tail(x[idx_tail])
+
+      ## For x <= 0, out stays 0
+      out
+    }
+
+    ### ----------------------------------------------------------
+    ### Spliced sampler
+    ### ----------------------------------------------------------
+    r_spliced <- function(n) {
+      u <- runif(n)
+      xs <- numeric(n)
+
+      n_body <- sum(u < prob_body)
+      n_tail <- n - n_body
+
+      if (n_body > 0)  xs[u < prob_body]  <- r_body(n_body)
+      if (n_tail > 0)  xs[u >= prob_body] <- r_tail(n_tail)
+
+      xs
+    }
+
+    X <- r_spliced(N)
+    f_X <- f_X_func(X)
+    F_X <- F_X_func(X)
+
+  } else if (ex == "Spliced2") {
+
+    # Prob. mass body/tail
+    c = 0.5
+    # 1) Erlang
+    k = 50
+    theta = 0.025
+    # 2) Pareto
+    alpha = 0.5
+
+    # Pareto random sample
+    mysplice <- list(
+      const = c,
+      pi = c(c, 1-c),              # probability mass in body/tail
+      trunclower = 0,              # support starts at 0
+      t = 1.6,                     # splicing point
+      type = c("ME", "Pa"),        # body: ME, tail: Pareto
+
+      # Body: Mixed Exponential (ME) component
+      MEfit = structure(list(
+        p = 1,                 # number of mixture components
+        shape = k,             # Vector of shape parameters r.
+        theta = theta,         # Scale parameter θ.
+        M_initial = 3          # Irrelevant after fitting; kept for bookkeeping.
+      ), class = "MEfit"),
+
+      # Tail: Pareto fit
+      EVTfit = structure(list(
+        gamma = alpha,         # Pareto tail index (shape).
+        endpoint = Inf
+      ), class = "EVTfit")
+    )
+    class(mysplice) <- "SpliceFit"
+
+    X        <- rSplice(N, mysplice)
+    f_X_func <- function(x) dSplice(x, mysplice)
+    f_X      <- f_X_func(X)
+    F_X_func <- function(x) pSplice(x, mysplice)
+    F_X      <- F_X_func(X)
+
   } else if (ex == "BivGauss_0" || ex == "BivGauss_0.2" || ex == "BivGauss_0.5" || ex == "BivGauss_0.8") {
 
     # Bivariate Gaussian with correlation rho
@@ -478,7 +613,7 @@ sim.dist <- function(N, ex) {
       pmvnorm(upper = row, mean = c(0,0), sigma = Sigma)[1]
     )
 
-  } else if (ex == "BivBiModGauss") {
+  } else if (ex == "BivBiModGauss1") {
     # Parameters
     a1 <- a2 <- 0; b1 <- b2 <- 9
     p <- 0.8

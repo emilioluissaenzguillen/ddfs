@@ -4,7 +4,7 @@
 \alias{plot.ddfs}
 \title{Plot method for ddfs objects.}
 \usage{
-\method{plot}{ddfs}(x, f = NULL, main = NULL, legend.pos = NULL, type = "density", ...)
+\method{plot}{ddfs}(x, f = NULL, main = NULL, legend.pos = NULL, fit = c("pdf", "cdf"), ...)
 }
 \arguments{
 \item{x}{a \code{\link{ddfs}} object from which the ddfs fit(s) should
@@ -21,8 +21,8 @@ values), these values will be used to display a reference curve/dots on the plot
 \item{legend.pos}{the position of the legend within the panel. See
 \link[graphics]{legend} for details.}
 
-\item{type}{character string specifying the type of plot required. Should be
-set either to \code{"density"} or  \code{"distribution"}.}
+\item{fit}{character string specifying the type of plot required. Should be
+set either to \code{"pdf"} or  \code{"cdf"}.}
 
 \item{...}{further arguments to be passed to the
 \code{\link[graphics]{plot.default}} function.}
