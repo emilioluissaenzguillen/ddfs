@@ -25,8 +25,8 @@ sim <- sim.dist(N = 1000, ex = "Gaussian")
 ddfs_fit <- ddfs(sim$X)
 
 # Plot estimated pdf/cdf
-plot(ddfs_fit, type = "density", f = sim$f_X_func)
-plot(ddfs_fit, type = "distribution", f = sim$F_X_func)
+plot(ddfs_fit, fit = "pdf", f = sim$f_X_func)
+plot(ddfs_fit, fit = "cdf", f = sim$F_X_func)
 ```
 
 License:
