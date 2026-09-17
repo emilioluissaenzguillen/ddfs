@@ -1,0 +1,15 @@
+During startup - Warning messages:
+1: Setting LC_COLLATE=C.UTF-8 failed 
+2: Setting LC_CTYPE=C.UTF-8 failed 
+3: Setting LC_MONETARY=C.UTF-8 failed 
+4: Setting LC_TIME=C.UTF-8 failed 
+* installing *source* package 'ddfs' ...
+** this is package 'ddfs' version '0.1.0'
+** using staged installation
+** libs
+using C++ compiler: 'G__~1.EXE (GCC) 14.2.0'
+g++ -std=gnu++17  -I"C:/PROGRA~1/R/R-45~1.0/include" -DNDEBUG  -I'C:/Users/emili/Dropbox/Bayes Business School/PhD/Research/Projects/PDF and CDF Estimation/R package/ddfs/.r-lib/Rcpp/include' -I'C:/Users/emili/Dropbox/Bayes Business School/PhD/Research/Projects/PDF and CDF Estimation/R package/ddfs/.r-lib/RcppArmadillo/include'   -I"C:/rtools45/x86_64-w64-mingw32.static.posix/include"   -fopenmp   -O2 -Wall  -mfpmath=sse -msse2 -mstackrealign    -c RcppExports.cpp -o RcppExports.o
+/bin/sh: line 1: g++: command not found
+make: *** [C:/PROGRA~1/R/R-45~1.0/etc/x64/Makeconf:296: RcppExports.o] Error 127
+ERROR: compilation failed for package 'ddfs'
+* removing 'C:/Users/emili/Dropbox/BAYESB~1/PhD/Research/Projects/PDFAND~1/RPACKA~1/ddfs/DDFS~1.RCH/ddfs'

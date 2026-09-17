@@ -1,0 +1,49 @@
+Package: ddfs
+Type: Package
+Title: Density and Distribution Function variable-knot Spline
+        estimation
+Version: 0.1.0
+Date: 2025-06-12
+Authors@R: c(person(given = c("Dimitrina", "S."),
+                      family = "Dimitrova",
+                      role = "aut",
+                      email = "D.Dimitrova@city.ac.uk"),
+              person(given = c("Vladimir", "K."),
+                      family = "Kaishev",
+                      role = "aut",
+                      email = "V.Kaishev@city.ac.uk"),
+              person(given = c("Emilio", "L."),
+                      family = "Sáenz Guillén",
+                      role = c("aut", "cre"),
+                      email = "Emilio.Saenz-Guillen@bayes.city.ac.uk")
+                      )
+Maintainer: Emilio L. Sáenz Guillén <Emilio.Saenz-Guillen@bayes.city.ac.uk>
+Description: Density and Distribution Function variable-knot Spline estimation,
+  DDFS, is a non-parametric method for the simultaneous estimation of both the
+  probability density function (pdf) and cumulative distribution function (cdf)
+  of a random variable. Leveraging B-spine properties, this method defines a model
+  structure under which, both the pdf and cdf spline models share the same set of
+  knots and their coefficients are connected. Estimation is then performed through
+  an iterative approach that combines constrained maximum likelihood estimation of
+  the coefficients with sequential minimum bias driven estimation of the knots. A
+  comprehensive account of the method, including its asymptotic properties and an
+  extensive numerical study, can be found in Dimitrova et al. (2025) (forthcoming).
+License: GPL (>= 3)
+Depends: R (>= 4.4.0)
+Imports: dccpp, DescTools, diptest, entropy, extraDistr, extRemes,
+        GeDS, graphics, ks, MASS, moments, mvtnorm, nakagami, nloptr,
+        nortest, numDeriv, pcaPP, plot3D, Rcpp (>= 1.0.0), ReIns,
+        splines, splines2
+LinkingTo: Rcpp, RcppArmadillo
+Suggests: SMPracticals, testthat (>= 3.0.0)
+Config/testthat/edition: 3
+SystemRequirements: Python (>= 3.x) with scipy
+Encoding: UTF-8
+URL: https://github.com/emilioluissaenzguillen/ddfs
+BugReports: https://github.com/emilioluissaenzguillen/ddfs/issues
+Config/roxygen2/version: 8.1.0
+NeedsCompilation: yes
+Packaged: 2026-09-16 09:34:48 UTC; CodexSandboxOffline
+Author: Dimitrina S. Dimitrova [aut],
+  Vladimir K. Kaishev [aut],
+  Emilio L. Sáenz Guillén [aut, cre]

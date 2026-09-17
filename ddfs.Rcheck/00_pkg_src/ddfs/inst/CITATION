@@ -1,0 +1,30 @@
+# Encoding: UTF-8
+
+meta <- packageDescription("ddfs")
+
+year <- sub(".*(2[[:digit:]]{3})-.*", "\\1", meta$Date)
+vers <- meta$Version
+
+citHeader("To cite the package 'ddfs' in publications, please use:")
+
+bibentry(
+  bibtype = "Manual",
+  title = "ddfs: Density & Distribution Function Estimation Using Variable-Knot Splines",
+  author = c(
+    person("Dimitrina S.", "Dimitrova"),
+    person("Vladimir K.", "Kaishev"),
+    person("Emilio L.", "Sáenz Guillén")
+  ),
+  year = year,
+  note = paste("R package version", vers),
+  url = "https://github.com/emilioluissaenzguillen/ddfs",
+  textVersion = paste(
+    "Dimitrova, D. S., Kaishev, V. K., and Sáenz Guillén, E. L. (",
+    year, "). ddfs: Density & Distribution Function Estimation Using Variable-Knot Splines. ",
+    "R package version ", vers, ". Available at https://github.com/emilioluissaenzguillen/ddfs.",
+    sep = ""
+  )
+)
+
+citFooter("\nUse ", sQuote('toBibtex(citation("ddfs"))'), " to extract BibTeX references.")
+

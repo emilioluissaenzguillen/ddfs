@@ -14,6 +14,7 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
                                     max_iterations = 50L, max.intknots = 1,
                                     beta = 0, phi_F_X = 0.3, q_F_X = 1, stoptype = "RDMD",
                                     tail_decay = c("auto", "none", "left", "right", "both"),
+                                    boundary_extension = 0,
                                     plot = FALSE, resids_plot = FALSE, pdf = NULL, cdf = NULL,
                                     stop_plotting = 0, schoenberg = FALSE)
 {
@@ -28,7 +29,11 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
 
   # Initialize
   F_X <- cumsum(rep(1/N, N))
-  extr <- range(X)
+  if (length(boundary_extension) == 1L) {
+    boundary_extension <- rep(boundary_extension, 2L)
+  }
+  extension <- boundary_extension * stats::bw.nrd0(X)
+  extr <- range(X) + c(-extension[1L], extension[2L])
   f_X_hat <- F_X_hat <- InterKnots <- NULL
   oldintc <- oldslp <- phis <- phis_star <- NULL
   f_X_hat_list <- F_X_hat_list <- list()
@@ -37,10 +42,12 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
   out <- list(
     f_X_hat = f_X_hat,
     F_X_hat = F_X_hat, type = "Univ - DDFS",
-    args = list(X = X, ecdf = F_X, phi = phi_F_X, q = q_F_X, beta = beta),
+    args = list(X = X, ecdf = F_X, phi = phi_F_X, q = q_F_X, beta = beta,
+                boundary_extension = boundary_extension),
     RSS = list(mindist = NULL, GeDS = NULL),
     model = NULL
   )
+  class(out) <- "ddfs"
 
   tail_decay <- match.arg(tail_decay)
 
@@ -264,21 +271,22 @@ UnivariateDensityFitter <- function(X, n = 4L, min_iterations = 2,
       # Case: Low density in both tails
       theta <- c(0, rep(n / sum(diff(knt, n)[-c(1, p)]), p - 2), 0)
       theta_prev <- theta
-      first_term <- (1 / (N - (sum(X == min(X)) + sum(X == max(X))))) * (n / diff(knt, n))
+      boundary_count <- sum(X == extr[1L]) + sum(X == extr[2L])
+      first_term <- (1 / (N - boundary_count)) * (n / diff(knt, n))
       indexes <- 2:(p - 1)
 
     } else if ( !left_decreasingtail && right_decreasingtail ) {
       # Case: Low density in the upper tail only
       theta <- c(rep(n / sum(diff(knt, n)[-p]), p - 1), 0)
       theta_prev <- theta
-      first_term <- (1 / (N - sum(X == max(X)))) * (n / diff(knt, n))
+      first_term <- (1 / (N - sum(X == extr[2L]))) * (n / diff(knt, n))
       indexes <- 1:(p - 1)
 
     } else if ( left_decreasingtail && !right_decreasingtail ) {
       # Case: Low density in the lower tail only
       theta <- c(0, rep(n / sum(diff(knt, n)[-1]), p - 1))
       theta_prev <- theta
-      first_term <- (1 / (N - sum(X == min(X)))) * (n / diff(knt, n))
+      first_term <- (1 / (N - sum(X == extr[1L]))) * (n / diff(knt, n))
       indexes <- 2:p
     }
 

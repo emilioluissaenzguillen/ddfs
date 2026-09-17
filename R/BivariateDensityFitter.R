@@ -36,7 +36,6 @@ BivariateDensityFitter <- function(XY, n = 3L, min_iterations = 1,
     args = list(XY = XY, ecdf = F_XY, phi = phi_F_XY, q = q_F_XY, beta = beta),
     model = NULL
     )
-
   # Calculate proportion of values in the lower and upper 5% of the range
   count_lowerX <- sum(X <= range(X)[1] + diff(range(X)) * 0.05) / length(X) # lower 5%
   count_upperX <- sum(X > range(X)[2] - diff(range(X)) * 0.05) / length(X)  # upper 5%
@@ -316,6 +315,4 @@ BivariateDensityFitter <- function(XY, n = 3L, min_iterations = 1,
 
   return(out)
 }
-
-
 

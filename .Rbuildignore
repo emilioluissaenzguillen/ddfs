@@ -3,3 +3,8 @@
 ^LICENSE\.md$
 ^\.positai$
 ^\.claude$
+^ddfs_.*[.]tar[.]gz$
+^ddfs[.]Rcheck$
+^\.r-lib$
+^\.RData$
+^\.Rhistory$
